@@ -271,3 +271,15 @@ if __name__ == "__main__":
         logger.info("Bot stopped by user")
     except Exception as e:
         logger.error(f"Bot crashed with error: {e}")
+
+if __name__ == "__main__":
+    from telegram.ext import ApplicationBuilder
+
+    bot_logic = TelegramVideoBot()
+
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+
+    app.add_handler(CommandHandler("start", bot_logic.start_command))
+    # يمكنك إضافة المزيد من الهاندلرز لو عندك
+
+    app.run_polling()
