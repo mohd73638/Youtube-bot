@@ -4,7 +4,7 @@ services:
     env: python
     plan: free
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "python bot.py"
+    startCommand: "uvicorn bot:webserver --host 0.0.0.0 --port 10000"
     envVars:
       - key: TELEGRAM_BOT_TOKEN
         value: 7838126945:AAHYk93RfyWjayjlitbdBdZonkkeAXg79OA
