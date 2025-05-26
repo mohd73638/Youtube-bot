@@ -97,8 +97,9 @@ async def on_startup():
     await application.bot.set_webhook(WEBHOOK_URL)
     print("Webhook set:", WEBHOOK_URL)
 
-@webserver.post(f"/{BOT_TOKEN}")
-async def handle_webhook(request: Request):
-    data = await request.json()
-    update = Update.de_json(data, application.bot)
-    await application.process_update(update)
+@webserver.on_event("startup")
+async def on_startup():
+    await application.initialize()
+    await application.bot.set_webhook(WEBHOOK_URL)
+    await application.start()
+    print("Webhook set:", WEBHOOK_URL)
