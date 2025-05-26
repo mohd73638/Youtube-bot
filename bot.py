@@ -91,11 +91,27 @@ async def telegram_webhook(request: Request):
     await application.process_update(update)
     return {"ok": True}
 
-# إعداد Webhook عند بدء التشغيل
-@webserver.on_event("startup")
-async def on_startup():
-    await application.bot.set_webhook(WEBHOOK_URL)
-    print("Webhook set:", WEBHOOK_URL)
+import asyncio
+from telegram import Bot
+
+async def set_webhook_once():
+    bot = Bot(BOT_TOKEN)
+    current = await bot.get_webhook_info()
+    if current.url != WEBHOOK_URL:
+        await bot.set_webhook(WEBHOOK_URL)
+        logger.info(f"Webhook set to {WEBHOOK_URL}")
+    else:
+        logger.info("Webhook already set correctly.")
+
+# تشغيل البوت عند بداية التشغيل
+async def startup():
+    await application.initialize()
+    await set_webhook_once()
+    await application.start()
+    logger.info("Bot started and webhook checked.")
+
+# استدعاء التشغيل التلقائي
+asyncio.get_event_loop().create_task(startup())
 
 @webserver.on_event("startup")
 async def on_startup():
