@@ -25,6 +25,7 @@ class VideoDownloader:
         except Exception as e:
             return False, str(e)
 
+    
     def download_video(self, url, user_id=None):
         """
         Download video from URL and return file path.
@@ -37,14 +38,6 @@ class VideoDownloader:
             ydl_opts = YT_DLP_OPTIONS.copy()
             output_template = os.path.join(user_dir, "%(title)s.%(ext)s")
             ydl_opts["outtmpl"] = output_template
-            
-            # Add anti-bot measures
-            ydl_opts.update({
-                
-                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                 sleep_interval : 1,
-                 extractor_retries : 3",
-            })
 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
