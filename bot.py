@@ -1,94 +1,98 @@
 import os
 import logging
-from telegram import Update
-from telegram.ext import (
-    Application, CommandHandler, MessageHandler, ContextTypes, filters
-)
-from telegram.error import TelegramError
-from config import BOT_TOKEN, setup_logging
-from video_downloader import VideoDownloader
+from fastapi import FastAPI, Request
+from telegram import Update, BotCommand
+from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram.constants import ChatMemberStatus
 from utils import is_supported_url, get_platform_name, cleanup_file, format_file_size
+from video_downloader import VideoDownloader
+from config import BOT_TOKEN, setup_logging
 
-# إعداد تسجيل الأخطاء
+# إعدادات
+APP_URL = "https://youtube-bot-j2rf.onrender.com"  # رابط تطبيقك على Render
+WEBHOOK_PATH = f"/{BOT_TOKEN}"
+WEBHOOK_URL = APP_URL + WEBHOOK_PATH
+CHANNEL_USERNAME = "@atheraber"  # معرف القناة
+
+# تسجيل الأحداث
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# رابط تطبيقك على Render
-APP_URL = "https://youtube-bot-j2rf.onrender.com"
+# إنشاء تطبيق FastAPI
+webserver = FastAPI()
 
-# معرف القناة المطلوب الاشتراك فيها
-CHANNEL_USERNAME = "@atheraber"
+# إنشاء البوت
+application = Application.builder().token(BOT_TOKEN).build()
+downloader = VideoDownloader()
 
-class TelegramVideoBot:
-    def __init__(self):
-        self.downloader = VideoDownloader()
+# التحقق من الاشتراك في القناة
+async def check_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    user_id = update.effective_user.id
+    try:
+        member = await context.bot.get_chat_member(chat_id=CHANNEL_USERNAME, user_id=user_id)
+        return member.status in [ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]
+    except Exception as e:
+        logger.error(f"Subscription check failed: {e}")
+        return False
 
-    async def check_subscription(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-        user_id = update.effective_user.id
-        try:
-            member = await context.bot.get_chat_member(chat_id=CHANNEL_USERNAME, user_id=user_id)
-            return member.status in ["member", "administrator", "creator"]
-        except TelegramError:
-            return False
+# أمر /start
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_subscription(update, context):
+        await update.message.reply_text("يرجى الاشتراك في القناة أولاً: " + CHANNEL_USERNAME)
+        return
 
-    async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if not await self.check_subscription(update, context):
-            await update.message.reply_text(
-                "يجب عليك الاشتراك في القناة أولاً لاستخدام البوت:\n" + CHANNEL_USERNAME
-            )
-            return
-
-        await update.message.reply_text(
-            "أهلاً بك في بوت التحميل!\nأرسل رابط الفيديو من YouTube أو Instagram أو Facebook."
-        )
-
-    async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if not await self.check_subscription(update, context):
-            await update.message.reply_text(
-                "الرجاء الاشتراك في القناة للاستمرار:\n" + CHANNEL_USERNAME
-            )
-            return
-
-        url = update.message.text.strip()
-        if not is_supported_url(url):
-            await update.message.reply_text("الرابط غير مدعوم حالياً.")
-            return
-
-        platform = get_platform_name(url)
-        await update.message.reply_text(f"جاري تحميل الفيديو من {platform}...")
-
-        try:
-            file_path = await self.downloader.download(url)
-            if not file_path:
-                await update.message.reply_text("فشل في تحميل الفيديو.")
-                return
-
-            file_size = os.path.getsize(file_path)
-            await update.message.reply_video(video=open(file_path, 'rb'), caption=f"الحجم: {format_file_size(file_size)}")
-        except Exception as e:
-            logger.error("Download error", exc_info=e)
-            await update.message.reply_text("حدث خطأ أثناء تحميل الفيديو.")
-        finally:
-            cleanup_file(file_path)
-
-async def main():
-    bot = TelegramVideoBot()
-
-    application = Application.builder().token(BOT_TOKEN).build()
-    application.add_handler(CommandHandler("start", bot.start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, bot.handle_message))
-
-    # إعداد Webhook
-    WEBHOOK_PATH = f"/{BOT_TOKEN}"
-    WEBHOOK_URL = APP_URL + WEBHOOK_PATH
-    PORT = int(os.environ.get("PORT", 10000))
-
-    await application.run_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        webhook_url=WEBHOOK_URL
+    msg = (
+        "🎥 **Video Downloader Bot** 🎥\n\n"
+        "مرحباً! أرسل لي رابط فيديو من:\n"
+        "• YouTube\n• Facebook\n• Instagram\n\n"
+        "وسأقوم بتحميله لك."
     )
+    await update.message.reply_text(msg)
 
-if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+# استلام الرابط
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_subscription(update, context):
+        await update.message.reply_text("يرجى الاشتراك في القناة أولاً: " + CHANNEL_USERNAME)
+        return
+
+    url = update.message.text.strip()
+    if not is_supported_url(url):
+        await update.message.reply_text("هذا الرابط غير مدعوم.")
+        return
+
+    await update.message.reply_text("جارٍ تحميل الفيديو، الرجاء الانتظار...")
+
+    try:
+        video_path, file_size = downloader.download(url)
+        if not video_path:
+            await update.message.reply_text("فشل التحميل.")
+            return
+
+        await context.bot.send_video(
+            chat_id=update.effective_chat.id,
+            video=open(video_path, "rb"),
+            caption=f"✅ تم التحميل بنجاح\nالحجم: {format_file_size(file_size)}"
+        )
+    except Exception as e:
+        logger.error(f"Download error: {e}")
+        await update.message.reply_text("حدث خطأ أثناء التحميل.")
+    finally:
+        cleanup_file(video_path)
+
+# ربط الأوامر والمعالجات
+application.add_handler(CommandHandler("start", start))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+# نقطة استقبال التحديثات من Telegram
+@webserver.post(WEBHOOK_PATH)
+async def telegram_webhook(request: Request):
+    data = await request.json()
+    update = Update.de_json(data, application.bot)
+    await application.process_update(update)
+    return {"ok": True}
+
+# إعداد Webhook عند بدء التشغيل
+@webserver.on_event("startup")
+async def on_startup():
+    await application.bot.set_webhook(WEBHOOK_URL)
+    print("Webhook set:", WEBHOOK_URL)
