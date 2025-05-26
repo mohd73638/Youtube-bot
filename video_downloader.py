@@ -48,3 +48,32 @@ class VideoDownloader:
         except Exception as e:
             logger.error(f"خطأ أثناء التحميل: {e}")
             return False, None, str(e), None
+    
+    def download_video(self, url, user_id=None):
+    """
+    Download video from URL and return file path.
+    Returns: (success: bool, file_path: str, error_message: str, video_info: dict)
+    """
+    try:
+        user_dir = os.path.join(DOWNLOAD_DIR, str(user_id) if user_id else "temp")
+        os.makedirs(user_dir, exist_ok=True)
+
+        ydl_opts = YT_DLP_OPTIONS.copy()
+        
+        # Clean and limit output template
+        ydl_opts["outtmpl"] = os.path.join(user_dir, "video_%(id)s.%(ext)s")
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            downloaded_file = ydl.prepare_filename(info)
+        
+        file_size = os.path.getsize(downloaded_file)
+        if file_size > MAX_FILE_SIZE:
+            cleanup_file(downloaded_file)
+            return False, None, "حجم الملف أكبر من الحد المسموح به.", info
+
+        return True, downloaded_file, None, info
+
+    except Exception as e:
+        logger.error(f"خطأ أثناء التحميل: {e}")
+        return False, None, str(e), None
