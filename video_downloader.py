@@ -41,3 +41,7 @@ class VideoDownloader:
         except Exception as e:
             logger.error(f"خطأ أثناء التحميل: {e}")
             return False, None, str(e), None
+
+def download(self, url):
+    """Alias for download_video method for backward compatibility"""
+    return self.download_video(url)
