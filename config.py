@@ -13,7 +13,7 @@ DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR", "./downloads")
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB - Telegram’s file size limit
 MAX_DURATION = 600  # 10 minutes max duration
 
-# yt-dlp configuration
+ # yt-dlp configuration
 YT_DLP_OPTIONS = {
     "format": "best[filesize<50M]/best",
     "outtmpl": f"{DOWNLOAD_DIR}/%(title)s.%(ext)s",
@@ -21,11 +21,27 @@ YT_DLP_OPTIONS = {
     "extractaudio": False,
     "audioformat": "mp3",
     "embed_subs": False,
+    "writesubtitles": False,
+    "writeautomaticsub": False,
+    "ignoreerrors": True,
 }
 
-# Setup logging
+# Supported platforms
+SUPPORTED_PLATFORMS = [
+    "youtube.com",
+    "youtu.be",
+    "instagram.com",
+    "facebook.com",
+    "fb.watch"
+]
+
 def setup_logging():
+    """Setup logging configuration"""
     logging.basicConfig(
         format=LOG_FORMAT,
-        level=LOG_LEVEL,
+        level=getattr(logging, LOG_LEVEL.upper(), logging.INFO)
     )
+    
+    # Reduce noise from other libraries
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("telegram").setLevel(logging.WARNING)
