@@ -1,5 +1,5 @@
 python-telegram-bot==20.3
 fastapi==0.95.1
 uvicorn==0.22.0
-yt-dlp>=2025.5.27
+yt-dlp>=2025.5.23
 httpx==0.24.1
