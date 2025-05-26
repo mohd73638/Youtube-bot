@@ -11,7 +11,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 
-WEBHOOK_PATH = f"/{TOKEN}"
+WEBHOOK_PATH = "/bot_webhook"
 WEBHOOK_URL = APP_URL + WEBHOOK_PATH
 
 app.run_webhook(
