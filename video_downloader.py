@@ -40,8 +40,8 @@ class VideoDownloader:
             
             # Add anti-bot measures
             ydl_opts.update({
-                "user_agent":
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ,
+                
+                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                  sleep_interval : 1,
                  extractor_retries : 3",
             })
