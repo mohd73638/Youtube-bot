@@ -1,4 +1,3 @@
-
 import os
 import yt_dlp
 import logging
@@ -10,6 +9,10 @@ logger = logging.getLogger(__name__)
 class VideoDownloader:
     def __init__(self):
         ensure_download_dir()
+
+    def download(self, url):
+        """Alias for download_video method for backward compatibility"""
+        return self.download_video(url)
 
     def download_video(self, url, user_id=None):
         """
@@ -41,7 +44,3 @@ class VideoDownloader:
         except Exception as e:
             logger.error(f"خطأ أثناء التحميل: {e}")
             return False, None, str(e), None
-
-def download(self, url):
-    """Alias for download_video method for backward compatibility"""
-    return self.download_video(url)
