@@ -2,7 +2,7 @@ import os
 import logging
 
 # Bot configuration
-BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "7838126945:AAFv-fPK-87EYIqM_RnrYr1gEd4Vw4gkjNc")
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "7838126945:AAHYk93RfyWjayjlitbdBdZonkkeAXg79OA")
 
 # Logging configuration
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
