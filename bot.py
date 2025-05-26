@@ -113,9 +113,3 @@ async def startup():
 # استدعاء التشغيل التلقائي
 asyncio.get_event_loop().create_task(startup())
 
-@webserver.on_event("startup")
-async def on_startup():
-    await application.initialize()
-    await application.bot.set_webhook(WEBHOOK_URL)
-    await application.start()
-    print("Webhook set:", WEBHOOK_URL)
