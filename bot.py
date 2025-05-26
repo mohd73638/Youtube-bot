@@ -9,7 +9,7 @@ from video_downloader import VideoDownloader
 from config import BOT_TOKEN, setup_logging
 
 # إعدادات
-APP_URL = "https://youtube-bot-j2rf.onrender.com"  # رابط تطبيقك على Render
+APP_URL = "https://youtube-bot-3-1g9w.onrender.com"  # رابط تطبيقك على Render
 WEBHOOK_PATH = f"/{BOT_TOKEN}"
 WEBHOOK_URL = APP_URL + WEBHOOK_PATH
 CHANNEL_USERNAME = "@atheraber"  # معرف القناة
