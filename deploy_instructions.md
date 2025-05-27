@@ -72,5 +72,5 @@ Your bot will be available on Telegram with these commands:
 
 - Check Render logs for deployment issues
 - Verify environment variables are set correctly
-- Test webhook with GitHub's webhook testing feature
+- Test webhook with GitHub s webhook testing feature
 - Use `/status` command to check bot health
