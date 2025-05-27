@@ -182,8 +182,8 @@ The bot will automatically monitor analyzed repositories for new commits and iss
     
     def _format_analysis_result(self, result):
         """Format analysis results for Telegram message"""
-        if not result.get( success ):
-            error_msg = result.get( error ,  Unknown error )
+        if not result.get( "success" ):
+            error_msg = result.get( "error ",  "Unknown error ")
             return f"❌ Analysis failed: {error_msg}"
         
         data = result.get( data , {})
