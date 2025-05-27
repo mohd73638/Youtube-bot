@@ -9,7 +9,7 @@ from webhook_handler import WebhookHandler
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
-    format= %(asctime)s - %(name)s - %(levelname)s - %(message)s 
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -22,27 +22,27 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 telegram_bot = TelegramBot()
 webhook_handler = WebhookHandler()
 
-@app.route( / )
+@app.route("/")
 def index():
     """Main page showing bot status and information"""
     bot_info = {
-         status :  Running ,
-         commands : [
-             /start - Start the bot ,
-             /help - Show help message ,
-             /analyze <repo_url> - Analyze a GitHub repository ,
-             /status - Check bot status ,
-             /repos - List watched repositories 
+        "status": "Running",
+        "commands": [
+            "/start - Start the bot",
+            "/help - Show help message",
+            "/analyze <repo_url> - Analyze a GitHub repository",
+            "/status - Check bot status",
+            "/repos - List watched repositories"
         ]
     }
-    return render_template( index.html , bot_info=bot_info)
+    return render_template("index.html", bot_info=bot_info)
 
-@app.route( /webhook/github , methods=[ POST ])
+@app.route("/webhook/github", methods=["POST"])
 def github_webhook():
     """Handle GitHub webhook events"""
     try:
-        signature = request.headers.get( X-Hub-Signature-256 )
-        event_type = request.headers.get( X-GitHub-Event )
+        signature = request.headers.get("X-Hub-Signature-256")
+        event_type = request.headers.get("X-GitHub-Event")
         payload = request.get_json()
         
         logger.info(f"Received GitHub webhook: {event_type}")
@@ -50,21 +50,21 @@ def github_webhook():
         # Verify webhook signature
         if signature and not webhook_handler.verify_signature(request.data, signature):
             logger.warning("Invalid webhook signature")
-            return jsonify({ error :  Invalid signature }), 403
+            return jsonify({"error": "Invalid signature"}), 403
         
         # Process the webhook event
         if event_type:
             result = webhook_handler.handle_event(event_type, payload)
         else:
-            result = { status :  error ,  message :  Missing event type }
+            result = {"status": "error", "message": "Missing event type"}
         
         return jsonify(result), 200
         
     except Exception as e:
         logger.error(f"Error processing webhook: {str(e)}")
-        return jsonify({ error :  Internal server error }), 500
+        return jsonify({"error": "Internal server error"}), 500
 
-@app.route( /webhook/telegram , methods=[ POST ])
+@app.route("/webhook/telegram", methods=["POST"])
 def telegram_webhook():
     """Handle Telegram webhook updates"""
     try:
@@ -74,35 +74,35 @@ def telegram_webhook():
         # Process the update
         telegram_bot.process_update(update)
         
-        return jsonify({ status :  ok }), 200
+        return jsonify({"status": "ok"}), 200
         
     except Exception as e:
         logger.error(f"Error processing Telegram webhook: {str(e)}")
-        return jsonify({ error :  Internal server error }), 500
+        return jsonify({"error": "Internal server error"}), 500
 
-@app.route( /webhook/info )
+@app.route("/webhook/info")
 def webhook_info():
     """Show webhook configuration information"""
-    webhook_url = os.environ.get( WEBHOOK_URL ,  https://youtube-bot-3-1g9w.onrender.com )
-    return render_template( webhook_info.html , webhook_url=webhook_url)
+    webhook_url = os.environ.get("WEBHOOK_URL", "https://youtube-bot-3-1g9w.onrender.com")
+    return render_template("webhook_info.html", webhook_url=webhook_url)
 
-@app.route( /health )
+@app.route("/health")
 def health_check():
     """Health check endpoint for monitoring"""
     return jsonify({
-         status :  healthy ,
-         bot_running : telegram_bot.is_running(),
-         github_connected : webhook_handler.is_configured()
+        "status": "healthy",
+        "bot_running": telegram_bot.is_running(),
+        "github_connected": webhook_handler.is_configured()
     })
 
 @app.errorhandler(404)
 def not_found(error):
-    return jsonify({ error :  Not found }), 404
+    return jsonify({"error": "Not found"}), 404
 
 @app.errorhandler(500)
 def internal_error(error):
     logger.error(f"Internal server error: {str(error)}")
-    return jsonify({ error :  Internal server error }), 500
+    return jsonify({"error": "Internal server error"}), 500
 
 def start_telegram_bot():
     """Start the Telegram bot in polling mode"""
@@ -112,12 +112,12 @@ def start_telegram_bot():
     except Exception as e:
         logger.error(f"Failed to start Telegram bot: {str(e)}")
 
-if __name__ ==  __main__ :
+if __name__ == "__main__":
     # Start Telegram bot in a separate thread for development
-    if os.environ.get( FLASK_ENV ) ==  development :
+    if os.environ.get("FLASK_ENV") == "development":
         bot_thread = threading.Thread(target=start_telegram_bot, daemon=True)
         bot_thread.start()
     
     # Run Flask app
-    port = int(os.environ.get( PORT , 5000))
-    app.run(host= 0.0.0.0 , port=port, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
