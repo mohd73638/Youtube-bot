@@ -23,7 +23,9 @@ class Config:
     DOWNLOAD_TIMEOUT = int(os.getenv('DOWNLOAD_TIMEOUT', 300))  # 5 minutes
     
     # Temporary directory for downloads
-    TEMP_DIR = os.getenv('TEMP_DIR', '/tmp')
+    
+    from config import Config
+    temp_dir = Config.TEMP_DIR
     
     # Video quality settings
     VIDEO_QUALITY = os.getenv('VIDEO_QUALITY', 'best[height<=720]')  # 720p max
