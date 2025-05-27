@@ -119,12 +119,17 @@ Need more help? Contact your administrator.
         """Handle /status command"""
         try:
             github_status = await self.github_analyzer.check_api_status()
-            
+           
+            if github_status:
+                github_status_text = "✅ Connected"
+            else:
+                github_status_text = "❌ Error"
+                
             status_message = f"""
 🟢 *Bot Status*
 
 *Telegram Bot:* ✅ Online
-*GitHub API:* { ✅ Connected  if github_status else  ❌ Error }
+*GitHub API:* {github_status_text}
 *Analysis Engine:* ✅ Ready
 
 *Statistics:*
