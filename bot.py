@@ -200,7 +200,7 @@ The bot will automatically monitor analyzed repositories for new commits and iss
         if issues:
             message += f"⚠️ *Issues Found ({len(issues)}):*\n"
             for i, issue in enumerate(issues[:5], 1):  # Limit to 5 issues
-                message += f"{i}. {issue.get('type', 'unknown')}: (issue.get('description', 'No "description')}\n
+                message += f"{i}. {issue.get('type', 'unknown')}: (issue.get('description', 'No "description")}\n
             
             if len(issues) > 5:
                 message += f"... and {len(issues) - 5} more issues\n"
