@@ -38,6 +38,9 @@ def clean_filename(filename):
     
     return filename
 
+
+import re
+
 def sanitize_filename(filename):
     # يحذف أو يستبدل الرموز غير الصالحة من اسم الملف
     return re.sub(r [\\/*?:"<>|] , "_", filename)
