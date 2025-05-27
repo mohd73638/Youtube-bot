@@ -13,7 +13,10 @@ class Config:
     """Configuration class for the bot"""
     
     # Telegram Bot Token - REQUIRED
-    BOT_TOKEN = os.getenv('BOT_TOKEN', '')
+    
+    import os
+
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
     
     # Webhook URL - REQUIRED for production
     WEBHOOK_URL = os.getenv('WEBHOOK_URL', 'https://youtube-bot-3-1g9w.onrender.com')
