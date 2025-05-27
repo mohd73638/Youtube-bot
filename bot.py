@@ -1,115 +1,365 @@
 import os
 import logging
-from fastapi import FastAPI, Request
-from telegram import Update, BotCommand
-from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
-from telegram.constants import ChatMemberStatus
-from utils import is_supported_url, get_platform_name, cleanup_file, format_file_size
+import requests
+import tempfile
+import time
+from datetime import datetime
+from config import Config
 from video_downloader import VideoDownloader
-from config import BOT_TOKEN, setup_logging
+from utils import is_valid_url, format_file_size, clean_filename
+from database import DatabaseManager
+from models import db
 
-# إعدادات
-APP_URL = "https://youtube-bot-3-1g9w.onrender.com"  # رابط تطبيقك على Render
-WEBHOOK_PATH = f"/{BOT_TOKEN}"
-WEBHOOK_URL = APP_URL + WEBHOOK_PATH
-CHANNEL_USERNAME = "@atheraber"  # معرف القناة
-
-# تسجيل الأحداث
-setup_logging()
 logger = logging.getLogger(__name__)
 
-# إنشاء تطبيق FastAPI
-webserver = FastAPI()
+class TelegramBot:
+    def __init__(self):
+        self.token = Config.BOT_TOKEN
+        self.api_url = f"https://api.telegram.org/bot{self.token}"
+        self.video_downloader = VideoDownloader()
+        
+        if not self.token:
+            raise ValueError("BOT_TOKEN not found in environment variables")
+    
+    def send_message(self, chat_id, text, parse_mode=None, reply_to_message_id=None):
+        """Send a text message to a chat"""
+        try:
+            data = {
+                'chat_id': chat_id,
+                'text': text
+            }
+            
+            if parse_mode:
+                data['parse_mode'] = parse_mode
+            
+            if reply_to_message_id:
+                data['reply_to_message_id'] = reply_to_message_id
+            
+            response = requests.post(f"{self.api_url}/sendMessage", json=data)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error sending message: {str(e)}")
+            return None
+    
+    def send_video(self, chat_id, video_path, caption=None, reply_to_message_id=None):
+        """Send a video file to a chat"""
+        try:
+            with open(video_path, 'rb') as video_file:
+                files = {'video': video_file}
+                data = {'chat_id': chat_id}
+                
+                if caption:
+                    data['caption'] = caption
+                
+                if reply_to_message_id:
+                    data['reply_to_message_id'] = reply_to_message_id
+                
+                response = requests.post(f"{self.api_url}/sendVideo", files=files, data=data)
+                response.raise_for_status()
+                return response.json()
+        except Exception as e:
+            logger.error(f"Error sending video: {str(e)}")
+            return None
+    
+    def send_document(self, chat_id, document_path, caption=None, reply_to_message_id=None):
+        """Send a document to a chat"""
+        try:
+            with open(document_path, 'rb') as doc_file:
+                files = {'document': doc_file}
+                data = {'chat_id': chat_id}
+                
+                if caption:
+                    data['caption'] = caption
+                
+                if reply_to_message_id:
+                    data['reply_to_message_id'] = reply_to_message_id
+                
+                response = requests.post(f"{self.api_url}/sendDocument", files=files, data=data)
+                response.raise_for_status()
+                return response.json()
+        except Exception as e:
+            logger.error(f"Error sending document: {str(e)}")
+            return None
+    
+    def send_chat_action(self, chat_id, action):
+        """Send chat action (typing, uploading, etc.)"""
+        try:
+            data = {
+                'chat_id': chat_id,
+                'action': action
+            }
+            response = requests.post(f"{self.api_url}/sendChatAction", json=data)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error sending chat action: {str(e)}")
+            return None
+    
+    def set_webhook(self, webhook_url):
+        """Set webhook URL"""
+        try:
+            data = {'url': webhook_url}
+            response = requests.post(f"{self.api_url}/setWebhook", json=data)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error setting webhook: {str(e)}")
+            return None
+    
+    def get_webhook_info(self):
+        """Get webhook information"""
+        try:
+            response = requests.get(f"{self.api_url}/getWebhookInfo")
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting webhook info: {str(e)}")
+            return None
+    
+    def process_update(self, update):
+        """Process incoming update from Telegram"""
+        try:
+            if 'message' not in update:
+                logger.warning("No message in update")
+                return None
+            
+            message = update['message']
+            chat_id = message['chat']['id']
+            
+            # Track user activity in database
+            if 'from' in message:
+                user_data = message['from']
+                DatabaseManager.get_or_create_user(user_data)
+            
+            # Handle different message types
+            if 'text' in message:
+                return self.handle_text_message(message)
+            elif 'photo' in message or 'video' in message or 'document' in message:
+                return self.handle_media_message(message)
+            else:
+                self.send_message(chat_id, "I can only process text messages and URLs. Please send me a video URL to download!")
+                return "Media message not supported"
+        
+        except Exception as e:
+            logger.error(f"Error processing update: {str(e)}")
+            return None
+    
+    def handle_text_message(self, message):
+        """Handle text messages"""
+        try:
+            chat_id = message['chat']['id']
+            text = message['text']
+            message_id = message['message_id']
+            user = message.get('from', {})
+            username = user.get('username', user.get('first_name', 'User'))
+            
+            logger.info(f"Received message from {username}: {text}")
+            
+            # Handle commands
+            if text.startswith('/start'):
+                welcome_text = f"""
+🤖 *Welcome to YouTube Video Downloader Bot!*
 
-# إنشاء البوت
-application = Application.builder().token(BOT_TOKEN).build()
-downloader = VideoDownloader()
+Hello {username}! I can help you download videos from various platforms.
 
-# التحقق من الاشتراك في القناة
-async def check_subscription(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    user_id = update.effective_user.id
-    try:
-        member = await context.bot.get_chat_member(chat_id=CHANNEL_USERNAME, user_id=user_id)
-        return member.status in [ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]
-    except Exception as e:
-        logger.error(f"Subscription check failed: {e}")
-        return False
+*How to use:*
+📹 Send me any video URL (YouTube, Instagram, TikTok, etc.)
+⬇️ I'll download it and send it back to you
 
-# أمر /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await check_subscription(update, context):
-        await update.message.reply_text("يرجى الاشتراك في القناة أولاً: " + CHANNEL_USERNAME)
-        return
+*Supported platforms:*
+• YouTube
+• Instagram
+• TikTok
+• Twitter
+• Facebook
+• And many more!
 
-    msg = (
-        "🎥 **Video Downloader Bot** 🎥\n\n"
-        "مرحباً! أرسل لي رابط فيديو من:\n"
-        "• YouTube\n• Facebook\n• Instagram\n\n"
-        "وسأقوم بتحميله لك."
-    )
-    await update.message.reply_text(msg)
+*Commands:*
+/help - Show this help message
+/start - Start the bot
 
-# استلام الرابط
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await check_subscription(update, context):
-        await update.message.reply_text("يرجى الاشتراك في القناة أولاً: " + CHANNEL_USERNAME)
-        return
+Just send me a video URL and I'll get to work! 🚀
+                """
+                self.send_message(chat_id, welcome_text, parse_mode='Markdown')
+                return "Welcome message sent"
+            
+            elif text.startswith('/help'):
+                help_text = """
+🆘 *Help - YouTube Video Downloader Bot*
 
-    url = update.message.text.strip()
-    if not is_supported_url(url):
-        await update.message.reply_text("هذا الرابط غير مدعوم.")
-        return
+*How to download videos:*
+1. Copy a video URL from any supported platform
+2. Send it to me in this chat
+3. Wait for me to process and download it
+4. Receive your video file!
 
-    await update.message.reply_text("جارٍ تحميل الفيديو، الرجاء الانتظار...")
+*Supported platforms:*
+• YouTube (youtube.com, youtu.be)
+• Instagram (instagram.com)
+• TikTok (tiktok.com)
+• Twitter (twitter.com, x.com)
+• Facebook (facebook.com)
+• And many more!
 
-    try:
-        video_path, file_size = downloader.download(url)
-        if not video_path:
-            await update.message.reply_text("فشل التحميل.")
-            return
+*Tips:*
+• I can handle most video URLs
+• Large files might take a bit longer
+• Some platforms have download restrictions
 
-        await context.bot.send_video(
-            chat_id=update.effective_chat.id,
-            video=open(video_path, "rb"),
-            caption=f"✅ تم التحميل بنجاح\nالحجم: {format_file_size(file_size)}"
-        )
-    except Exception as e:
-        logger.error(f"Download error: {e}")
-        await update.message.reply_text("حدث خطأ أثناء التحميل.")
-    finally:
-        cleanup_file(video_path)
-
-# ربط الأوامر والمعالجات
-application.add_handler(CommandHandler("start", start))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-# نقطة استقبال التحديثات من Telegram
-@webserver.post(WEBHOOK_PATH)
-async def telegram_webhook(request: Request):
-    data = await request.json()
-    update = Update.de_json(data, application.bot)
-    await application.process_update(update)
-    return {"ok": True}
-
-import asyncio
-from telegram import Bot
-
-async def set_webhook_once():
-    bot = Bot(BOT_TOKEN)
-    current = await bot.get_webhook_info()
-    if current.url != WEBHOOK_URL:
-        await bot.set_webhook(WEBHOOK_URL)
-        logger.info(f"Webhook set to {WEBHOOK_URL}")
-    else:
-        logger.info("Webhook already set correctly.")
-
-# تشغيل البوت عند بداية التشغيل
-async def startup():
-    await application.initialize()
-    await set_webhook_once()
-    await application.start()
-    logger.info("Bot started and webhook checked.")
-
-# استدعاء التشغيل التلقائي
-asyncio.get_event_loop().create_task(startup())
-
+Need more help? Just send me a video URL to try it out! 😊
+                """
+                self.send_message(chat_id, help_text, parse_mode='Markdown')
+                return "Help message sent"
+            
+            # Check if message contains a URL
+            elif is_valid_url(text):
+                # Create download record in database
+                download_record = DatabaseManager.create_download_record(chat_id, text)
+                return self.download_and_send_video(chat_id, text, message_id, username, download_record)
+            
+            else:
+                self.send_message(
+                    chat_id, 
+                    "Please send me a valid video URL! 🔗\n\nSupported platforms: YouTube, Instagram, TikTok, Twitter, Facebook, and many more.\n\nUse /help for more information.",
+                    reply_to_message_id=message_id
+                )
+                return "Invalid URL message sent"
+        
+        except Exception as e:
+            logger.error(f"Error handling text message: {str(e)}")
+            return None
+    
+    def handle_media_message(self, message):
+        """Handle media messages"""
+        chat_id = message['chat']['id']
+        self.send_message(chat_id, "I can process video URLs! Please send me a text message with a video URL to download.")
+        return "Media message handled"
+    
+    def download_and_send_video(self, chat_id, url, message_id, username, download_record=None):
+        """Download video and send to user"""
+        start_time = time.time()
+        
+        try:
+            # Update download status to processing
+            if download_record:
+                DatabaseManager.update_download_status(download_record.id, 'processing')
+            
+            # Send "uploading video" action
+            self.send_chat_action(chat_id, 'upload_video')
+            
+            # Send processing message
+            processing_msg = self.send_message(
+                chat_id, 
+                "🔄 Processing your video... This might take a moment!",
+                reply_to_message_id=message_id
+            )
+            
+            # Download the video
+            logger.info(f"Starting download for {username}: {url}")
+            result = self.video_downloader.download(url)
+            
+            if result['success']:
+                file_path = result['file_path']
+                title = result.get('title', 'Downloaded Video')
+                duration = result.get('duration', 'Unknown')
+                file_size = result.get('file_size', 0)
+                uploader = result.get('uploader', 'Unknown')
+                
+                # Update download record with video info
+                if download_record:
+                    DatabaseManager.update_download_status(
+                        download_record.id, 
+                        'completed',
+                        file_size=file_size,
+                        download_time=time.time() - start_time
+                    )
+                
+                # Prepare caption
+                caption = f"🎬 *{title}*\n"
+                if duration != 'Unknown':
+                    caption += f"⏱ Duration: {duration}\n"
+                caption += f"📁 Size: {format_file_size(file_size)}\n"
+                if uploader != 'Unknown':
+                    caption += f"📺 Channel: {uploader}\n"
+                caption += f"👤 Requested by: {username}"
+                
+                # Send the video
+                self.send_chat_action(chat_id, 'upload_video')
+                
+                # Check file size (Telegram limit is 50MB for videos)
+                if file_size > 50 * 1024 * 1024:  # 50MB
+                    # Send as document if too large
+                    sent = self.send_document(
+                        chat_id, 
+                        file_path, 
+                        caption=caption + "\n\n📎 Sent as document due to size limit",
+                        reply_to_message_id=message_id
+                    )
+                else:
+                    # Send as video
+                    sent = self.send_video(
+                        chat_id, 
+                        file_path, 
+                        caption=caption,
+                        reply_to_message_id=message_id
+                    )
+                
+                if sent:
+                    success_msg = "✅ Video downloaded and sent successfully!"
+                    logger.info(f"Video sent successfully to {username}")
+                    
+                    # Update daily stats
+                    DatabaseManager.update_daily_stats()
+                else:
+                    success_msg = "❌ Failed to send video. The file might be too large or corrupted."
+                    logger.error(f"Failed to send video to {username}")
+                    
+                    # Mark as failed in database
+                    if download_record:
+                        DatabaseManager.update_download_status(
+                            download_record.id, 
+                            'failed',
+                            error_message="Failed to send video to user"
+                        )
+                
+                # Clean up
+                try:
+                    os.unlink(file_path)
+                    logger.info(f"Cleaned up file: {file_path}")
+                except:
+                    pass
+                
+                return success_msg
+            
+            else:
+                error_msg = f"❌ Failed to download video: {result.get('error', 'Unknown error')}"
+                self.send_message(chat_id, error_msg, reply_to_message_id=message_id)
+                logger.error(f"Download failed for {username}: {result.get('error')}")
+                
+                # Update download record as failed
+                if download_record:
+                    DatabaseManager.update_download_status(
+                        download_record.id, 
+                        'failed',
+                        error_message=result.get('error', 'Unknown error'),
+                        download_time=time.time() - start_time
+                    )
+                
+                return error_msg
+        
+        except Exception as e:
+            error_msg = f"❌ An error occurred while processing your request: {str(e)}"
+            self.send_message(chat_id, error_msg, reply_to_message_id=message_id)
+            logger.error(f"Error in download_and_send_video: {str(e)}")
+            
+            # Update download record as failed
+            if download_record:
+                DatabaseManager.update_download_status(
+                    download_record.id, 
+                    'failed',
+                    error_message=str(e),
+                    download_time=time.time() - start_time
+                )
+            
+            return error_msg
