@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class TelegramBot:
     def __init__(self):
-        self.token = os.environ.get( TELEGRAM_BOT_TOKEN )
+        self.token = os.environ.get("TELEGRAM_BOT_TOKEN")
         if not self.token:
             logger.error("TELEGRAM_BOT_TOKEN environment variable not set")
             raise ValueError("Telegram bot token is required")
@@ -42,7 +42,7 @@ Welcome! I can help you analyze GitHub repositories for code issues and improvem
 
 Let s get started! 🚀
         """
-        await update.message.reply_text(welcome_message, parse_mode= Markdown )
+        await update.message.reply_text(welcome_message, parse_mode="Markdown")
     
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /help command"""
@@ -69,7 +69,7 @@ Let s get started! 🚀
 
 Need more help? Contact your administrator.
         """
-        await update.message.reply_text(help_message, parse_mode= Markdown )
+        await update.message.reply_text(help_message, parse_mode="Markdown")
     
     async def analyze_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /analyze command"""
@@ -77,7 +77,7 @@ Need more help? Contact your administrator.
             await update.message.reply_text(
                 "❌ Please provide a GitHub repository URL.\n"
                 "Example: `/analyze https://github.com/user/repo`",
-                parse_mode= Markdown 
+                parse_mode="Markdown"
             )
             return
         
@@ -89,22 +89,22 @@ Need more help? Contact your administrator.
             "🔍 *Analyzing repository...*\n"
             f"Repository: `{repo_url}`\n"
             "This may take a few moments...",
-            parse_mode= Markdown 
+            parse_mode="Markdown"
         )
         
         try:
             # Analyze the repository
             analysis_result = await self.github_analyzer.analyze_repository(repo_url)
             
-            if analysis_result[ success ]:
+            if analysis_result.get("success"):
                 # Format the results
                 result_message = self._format_analysis_result(analysis_result)
-                await status_message.edit_text(result_message, parse_mode= Markdown )
+                await status_message.edit_text(result_message, parse_mode="Markdown")
             else:
                 await status_message.edit_text(
                     f"❌ *Analysis Failed*\n"
-                    f"Error: {analysis_result[ error ]}",
-                    parse_mode= Markdown 
+                    f"Error: {analysis_result.get( error ,  Unknown error )}",
+                    parse_mode="Markdown"
                 )
                 
         except Exception as e:
@@ -112,7 +112,7 @@ Need more help? Contact your administrator.
             await status_message.edit_text(
                 "❌ *Analysis Failed*\n"
                 "An unexpected error occurred. Please try again later.",
-                parse_mode= Markdown 
+                parse_mode="Markdown"
             )
     
     async def status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -140,13 +140,13 @@ Need more help? Contact your administrator.
 Bot is ready to analyze repositories! 🚀
             """
             
-            await update.message.reply_text(status_message, parse_mode= Markdown )
+            await update.message.reply_text(status_message, parse_mode="Markdown")
             
         except Exception as e:
             logger.error(f"Error in status command: {str(e)}")
             await update.message.reply_text(
                 "❌ Error checking status. Please try again later.",
-                parse_mode= Markdown 
+                parse_mode="Markdown"
             )
     
     async def repos_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -162,18 +162,18 @@ To add a repository to your watch list, use:
 
 The bot will automatically monitor analyzed repositories for new commits and issues.
         """
-        await update.message.reply_text(repos_message, parse_mode= Markdown )
+        await update.message.reply_text(repos_message, parse_mode="Markdown")
     
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle regular messages"""
         message_text = update.message.text.lower()
         
-        if  github.com  in message_text and ( http  in message_text or  https  in message_text):
+        if "github.com" in message_text and ("http" in message_text or "https" in message_text):
             # User sent a GitHub URL, suggest using /analyze
             await update.message.reply_text(
                 "🔗 I detected a GitHub repository URL!\n"
                 f"Use `/analyze {update.message.text}` to analyze this repository.",
-                parse_mode= Markdown 
+                parse_mode="Markdown"
             )
         else:
             await update.message.reply_text(
@@ -182,14 +182,14 @@ The bot will automatically monitor analyzed repositories for new commits and iss
     
     def _format_analysis_result(self, result):
         """Format analysis results for Telegram message"""
-        if not result.get( "success" ):
-            error_msg = result.get( "error ",  "Unknown error ")
+        if not result.get("success"):
+            error_msg = result.get("error", "Unknown error")
             return f"❌ Analysis failed: {error_msg}"
         
-        data = result.get( data , {})
-        repo_info = data.get( repository , {})
-        issues = data.get( issues , [])
-        suggestions = data.get( suggestions , [])
+        data = result.get("data", {})
+        repo_info = data.get("repository", {})
+        issues = data.get("issues", [])
+        suggestions = data.get("suggestions", [])
         
         message = f"✅ *Analysis Complete*\n\n"
         message += f"📦 *Repository:* {repo_info.get( name ,  Unknown )}\n"
@@ -200,7 +200,7 @@ The bot will automatically monitor analyzed repositories for new commits and iss
         if issues:
             message += f"⚠️ *Issues Found ({len(issues)}):*\n"
             for i, issue in enumerate(issues[:5], 1):  # Limit to 5 issues
-                message += f"{i}. {issue.get('type', 'unknown')}: {issue.get('description', 'No description')}\n"
+                message += f"{i}. {issue.get( type ,  unknown )}: {issue.get( description ,  No description )}\n"
             
             if len(issues) > 5:
                 message += f"... and {len(issues) - 5} more issues\n"
