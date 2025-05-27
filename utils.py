@@ -73,6 +73,11 @@ def format_duration(seconds):
     except:
         return "Unknown"
 
+import os
+from config import TEMP_DIR
+
+def ensure_download_dir():
+    os.makedirs(TEMP_DIR, exist_ok=True)
 def get_file_size(file_path):
     """Get file size in bytes"""
     try:
