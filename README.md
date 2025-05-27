@@ -32,3 +32,42 @@ A powerful Telegram bot that analyzes GitHub repositories for code issues, secur
 - `/repos` - List watched repositories
 
 ## Example Usage
+
+/analyze https://github.com/user/repository
+The bot will analyze the repository and provide:
+- Security vulnerability detection
+- Code quality issues
+- Best practice suggestions
+- File structure analysis
+
+## Supported Languages
+
+- Python
+- JavaScript/TypeScript
+- Java
+- C/C++
+- Go
+- Rust
+- PHP
+- Ruby
+- And more...
+
+## Webhook Configuration
+
+1. Go to your GitHub repository settings
+2. Navigate to Webhooks
+3. Add webhook with URL: `https://your-app.onrender.com/webhook/github`
+4. Set content type to `application/json`
+5. Select events: Push, Pull requests, Issues
+
+## Local Development
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Set environment variables
+export TELEGRAM_BOT_TOKEN="your_token_here"
+
+# Run the application
+python main.py
