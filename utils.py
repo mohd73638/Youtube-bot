@@ -38,6 +38,9 @@ def clean_filename(filename):
     
     return filename
 
+def sanitize_filename(filename):
+    # يحذف أو يستبدل الرموز غير الصالحة من اسم الملف
+    return re.sub(r [\\/*?:"<>|] , "_", filename)
 def format_file_size(size_bytes):
     """Format file size in human readable format"""
     if not size_bytes:
