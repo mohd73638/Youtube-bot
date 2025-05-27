@@ -10,19 +10,18 @@ import os
 
 class HealthHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path == '/' or self.path == '/health':
+        if self.path == "/" or self.path == "/health":
             self.send_response(200)
-            self.send_header('Content-type', 'text/plain')
+            self.send_header("Content-type", "text/plain")
             self.end_headers()
             
-            status_message = f"""
-🤖 YouTube Videos Saver Bot - Health Check
+            status_message = f"""🤖 YouTube Videos Saver Bot - Health Check
 ✅ Status: ONLINE
-⏰ Time: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}
+⏰ Time: {time.strftime( %Y-%m-%d %H:%M:%S UTC , time.gmtime())}
 📱 Bot: @saveruvidbot
 🔗 Channel: @atheraber
 🎥 Supports: YouTube, Instagram, Facebook
-            """
+"""
             self.wfile.write(status_message.encode())
         else:
             self.send_response(404)
@@ -35,7 +34,7 @@ class HealthHandler(BaseHTTPRequestHandler):
 def start_health_server():
     """Start the health check server on port 5000"""
     try:
-        server = HTTPServer(('0.0.0.0', 5000), HealthHandler)
+        server = HTTPServer(("0.0.0.0", 5000), HealthHandler)
         print("Health check server started on http://0.0.0.0:5000")
         server.serve_forever()
     except Exception as e:
