@@ -14,6 +14,9 @@ def is_valid_url(url):
     except:
         return False
 
+def cleanup_file(file_path):
+    # Your code here
+    pass
 def clean_filename(filename):
     """Clean filename for safe file system usage"""
     if not filename:
