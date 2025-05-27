@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class WebhookHandler:
     def __init__(self):
-        self.webhook_secret = os.environ.get( GITHUB_WEBHOOK_SECRET )
+        self.webhook_secret = os.environ.get("GITHUB_WEBHOOK_SECRET")
         self.github_analyzer = GitHubAnalyzer()
         
     def is_configured(self) -> bool:
@@ -39,44 +39,58 @@ class WebhookHandler:
         try:
             logger.info(f"Processing GitHub webhook event: {event_type}")
             
-            if event_type ==  push :
+            if event_type == "push":
                 return self._handle_push_event(payload)
-            elif event_type ==  pull_request :
+            elif event_type == "pull_request":
                 return self._handle_pull_request_event(payload)
-            elif event_type ==  issues :
+            elif event_type == "issues":
                 return self._handle_issues_event(payload)
-            elif event_type ==  repository :
+            elif event_type == "repository":
                 return self._handle_repository_event(payload)
-            elif event_type ==  ping :
+            elif event_type == "ping":
                 return self._handle_ping_event(payload)
             else:
                 logger.info(f"Unhandled event type: {event_type}")
-                return { status :  ignored ,  message : f Event type {event_type} not handled }
+                return { "status": "ignored", "message": f"Event type {event_type} not handled" }
                 
         except Exception as e:
             logger.error(f"Error handling webhook event {event_type}: {str(e)}")
-            return { status :  error ,  message : str(e)}
+            return { "status": "error", "message": str(e) }
     
     def _handle_push_event(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Handle push events"""
         try:
-            repository = payload.get( repository , {})
-            repo_name = repository.get( full_name ,  Unknown )
-            commits = payload.get( commits , [])
-            branch = payload.get( ref ,   ).replace( refs/heads/ ,   )
+            repository = payload.get("repository", {})
+            repo_name = repository.get("full_name", "Unknown")
+            commits = payload.get("commits", [])
+            branch = payload.get("ref", "").replace("refs/heads/", "")
             
             logger.info(f"Push event for {repo_name} on branch {branch} with {len(commits)} commits")
             
             result = {
-                 status :  processed ,
-                 event_type :  push ,
-                 repository : repo_name,
-                 branch : branch,
-                 commits_count : len(commits),
-                 message : f Push event processed for {repo_name} 
+                "status": "processed",
+                "event_type": "push",
+                "repository": repo_name,
+                "branch": branch,
+                "commits_count": len(commits),
+                "message": f"Push event processed for {repo_name}"
             }
             
             return result
             
         except Exception as e:
-            logger.error(f"Error handling push event:
+            logger.error(f"Error handling push event: {str(e)}")
+            return { "status": "error", "message": str(e) }
+
+    # You should implement the following stub methods for completeness:
+    def _handle_pull_request_event(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return { "status": "processed", "event_type": "pull_request", "message": "Pull request event processed." }
+
+    def _handle_issues_event(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return { "status": "processed", "event_type": "issues", "message": "Issues event processed." }
+
+    def _handle_repository_event(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return { "status": "processed", "event_type": "repository", "message": "Repository event processed." }
+
+    def _handle_ping_event(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        return { "status": "processed", "event_type": "ping", "message": "Ping event processed." }
