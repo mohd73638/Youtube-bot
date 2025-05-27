@@ -1,0 +1,7 @@
+Flask==3.0.0
+gunicorn==23.0.0
+python-telegram-bot==22.1
+PyGithub==2.6.1
+requests==2.32.3
+python-dotenv==1.0.0
+Werkzeug==3.0.1

@@ -1,75 +1,81 @@
-# YouTube Video Downloader Telegram Bot
+# GitHub Code Analyzer Bot
 
-A powerful Telegram bot that can download videos from YouTube and 100+ other platforms using yt-dlp. The bot is designed to run on Render with webhook integration for optimal performance.
+A powerful Telegram bot that analyzes GitHub repositories for code issues, security vulnerabilities, and provides improvement suggestions.
 
 ## Features
 
-- 📹 Download videos from YouTube, Instagram, TikTok, Twitter, Facebook, and many more
-- 🎯 High-quality downloads up to 720p
-- ⚡ Fast processing with webhook integration
-- 🔄 Automatic file size optimization for Telegram limits
-- 🛡️ Robust error handling and user feedback
-- 📱 User-friendly interface with helpful commands
-- 🌐 Web interface for bot status monitoring
+- 🔍 **Code Analysis**: Detects security vulnerabilities and code quality issues
+- 📊 **GitHub Integration**: Seamless repository analysis via GitHub API
+- 🤖 **Telegram Bot**: Easy-to-use commands for repository analysis
+- 🔔 **Webhook Support**: Real-time notifications for repository changes
+- 🌐 **Web Dashboard**: Monitor bot status and configuration
 
-## Supported Platforms
+## Quick Start
 
-- YouTube (youtube.com, youtu.be)
-- Instagram (instagram.com)
-- TikTok (tiktok.com)
-- Twitter/X (twitter.com, x.com)
-- Facebook (facebook.com)
-- Vimeo (vimeo.com)
-- Reddit (reddit.com)
-- And 100+ more platforms supported by yt-dlp
+### 1. Deploy to Render
 
-## Setup Instructions
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
 
-### 1. Create a Telegram Bot
+### 2. Set Environment Variables
 
-1. Message [@BotFather](https://t.me/botfather) on Telegram
-2. Use `/newbot` command to create a new bot
-3. Follow the instructions and get your bot token
-4. Save the token - you'll need it for deployment
+- `TELEGRAM_BOT_TOKEN`: Your Telegram bot token from @BotFather
+- `GITHUB_TOKEN`: GitHub personal access token (optional, for higher rate limits)
+- `GITHUB_WEBHOOK_SECRET`: Secret for webhook verification (optional)
+- `WEBHOOK_URL`: Your deployed application URL
 
-### 2. Deploy on Render
+### 3. Bot Commands
 
-1. Fork this repository to your GitHub account
-2. Create a new Web Service on [Render](https://render.com)
-3. Connect your GitHub repository
-4. Configure the following:
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn app:app --bind 0.0.0.0:$PORT`
-   - **Environment Variables**:
-     - `BOT_TOKEN`: Your Telegram bot token from BotFather
-     - `WEBHOOK_URL`: Your Render app URL (e.g., `https://your-app.onrender.com`)
+- `/start` - Start the bot
+- `/help` - Show help message
+- `/analyze <repo_url>` - Analyze a GitHub repository
+- `/status` - Check bot and service status
+- `/repos` - List watched repositories
 
-### 3. Set Up Webhook
+## Example Usage
 
-After deployment, visit `https://your-app.onrender.com/set_webhook` to configure the webhook automatically.
+```
+/analyze https://github.com/user/repository
+```
 
-## Environment Variables
+The bot will analyze the repository and provide:
+- Security vulnerability detection
+- Code quality issues
+- Best practice suggestions
+- File structure analysis
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `BOT_TOKEN` | Telegram bot token from BotFather | Yes | - |
-| `WEBHOOK_URL` | Your Render app URL | Yes | - |
-| `MAX_FILE_SIZE` | Maximum file size in bytes | No | 50MB |
-| `DOWNLOAD_TIMEOUT` | Download timeout in seconds | No | 300 |
-| `VIDEO_QUALITY` | Video quality setting | No | `best[height<=720]` |
+## Supported Languages
 
-## Bot Commands
+- Python
+- JavaScript/TypeScript
+- Java
+- C/C++
+- Go
+- Rust
+- PHP
+- Ruby
+- And more...
 
-- `/start` - Start the bot and get welcome message
-- `/help` - Show detailed help and instructions
-- Send any video URL - Bot will download and send the video
+## Webhook Configuration
 
-## Usage
+1. Go to your GitHub repository settings
+2. Navigate to Webhooks
+3. Add webhook with URL: `https://your-app.onrender.com/webhook/github`
+4. Set content type to `application/json`
+5. Select events: Push, Pull requests, Issues
 
-1. Start a chat with your bot
-2. Send `/start` to initialize
-3. Send any video URL from supported platforms
-4. Wait for the bot to process and send your video
+## Local Development
 
-## File Structure
+```bash
+# Install dependencies
+pip install -r requirements.txt
 
+# Set environment variables
+export TELEGRAM_BOT_TOKEN="your_token_here"
+
+# Run the application
+python main.py
+```
+
+## License
+
+MIT License - see LICENSE file for details
