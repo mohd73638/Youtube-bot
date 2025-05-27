@@ -1,12 +1,16 @@
+
 import os
 import logging
-from telegram import Update, Bot
+from telegram import Update, Bot, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from github_analyzer import GitHubAnalyzer
 import asyncio
 import json
 
 logger = logging.getLogger(__name__)
+
+# Channel username for subscription check
+CHANNEL_USERNAME = os.environ.get("CHANNEL_USERNAME", "@atheraber").lstrip("@")
 
 class TelegramBot:
     def __init__(self):
@@ -19,13 +23,37 @@ class TelegramBot:
         self.application = None
         self.github_analyzer = GitHubAnalyzer()
         self.running = False
-        
+
+    async def check_subscription(self, user_id):
+        """Check if user is a member of the required channel"""
+        try:
+            chat_member = await self.bot.get_chat_member(chat_id="@" + CHANNEL_USERNAME, user_id=user_id)
+            return chat_member.status in [ creator ,  administrator ,  member ]
+        except Exception as e:
+            logger.warning(f"Subscription check failed for user {user_id}: {e}")
+            return False
+
+    async def require_subscription(self, update: Update):
+        """Send join channel message and stop further processing"""
+        markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("Join Channel", url=f"https://t.me/{CHANNEL_USERNAME}")]
+        ])
+        await update.message.reply_text(
+            "🚫 To use this bot, please join our channel first.",
+            reply_markup=markup
+        )
+
     def is_running(self):
         """Check if bot is running"""
         return self.running
-    
+
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command"""
+        user_id = update.effective_user.id
+        if not await self.check_subscription(user_id):
+            await self.require_subscription(update)
+            return
+
         welcome_message = """
 🤖 *GitHub Code Analyzer Bot*
 
@@ -46,6 +74,11 @@ Let s get started! 🚀
     
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /help command"""
+        user_id = update.effective_user.id
+        if not await self.check_subscription(user_id):
+            await self.require_subscription(update)
+            return
+
         help_message = """
 🔧 *GitHub Code Analyzer Bot Help*
 
@@ -73,6 +106,11 @@ Need more help? Contact your administrator.
     
     async def analyze_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /analyze command"""
+        user_id = update.effective_user.id
+        if not await self.check_subscription(user_id):
+            await self.require_subscription(update)
+            return
+
         if not context.args:
             await update.message.reply_text(
                 "❌ Please provide a GitHub repository URL.\n"
@@ -83,7 +121,7 @@ Need more help? Contact your administrator.
         
         repo_url = context.args[0]
         chat_id = update.effective_chat.id
-        
+
         # Send initial message
         status_message = await update.message.reply_text(
             "🔍 *Analyzing repository...*\n"
@@ -117,6 +155,11 @@ Need more help? Contact your administrator.
     
     async def status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /status command"""
+        user_id = update.effective_user.id
+        if not await self.check_subscription(user_id):
+            await self.require_subscription(update)
+            return
+
         try:
             github_status = await self.github_analyzer.check_api_status()
             
@@ -151,6 +194,11 @@ Bot is ready to analyze repositories! 🚀
     
     async def repos_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /repos command"""
+        user_id = update.effective_user.id
+        if not await self.check_subscription(user_id):
+            await self.require_subscription(update)
+            return
+
         # For now, return a placeholder message
         repos_message = """
 📚 *Watched Repositories*
@@ -166,6 +214,11 @@ The bot will automatically monitor analyzed repositories for new commits and iss
     
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle regular messages"""
+        user_id = update.effective_user.id
+        if not await self.check_subscription(user_id):
+            await self.require_subscription(update)
+            return
+
         message_text = update.message.text.lower()
         
         if "github.com" in message_text and ("http" in message_text or "https" in message_text):
