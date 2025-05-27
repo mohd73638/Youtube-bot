@@ -1,5 +1,14 @@
 import os
 
+YT_DLP_OPTIONS = {
+    "format": "best",
+    "noplaylist": True,
+    "quiet": True,
+    "no_warnings": True,
+}
+
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+DOWNLOAD_DIR = "downloads"
 class Config:
     """Configuration class for the bot"""
     
