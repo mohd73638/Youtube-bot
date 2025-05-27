@@ -4,7 +4,7 @@ import logging
 import asyncio
 import tempfile
 import shutil
-from telegram import Update, BotCommand
+from telegram import Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ChatAction
 import yt_dlp
@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 # Setup logging
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
@@ -20,12 +20,12 @@ logger = logging.getLogger(__name__)
 # Bot configuration
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 DOWNLOAD_DIR = "./downloads"
-MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB - Telegram's file size limit
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB - Telegram s file size limit
 REQUIRED_CHANNEL = "@atheraber"  # Users must subscribe to this channel
 
 # Supported platforms
 SUPPORTED_PLATFORMS = [
-    'youtube.com', 'youtu.be', 'instagram.com', 'facebook.com', 'fb.watch'
+    "youtube.com", "youtu.be", "instagram.com", "facebook.com", "fb.watch"
 ]
 
 def is_supported_url(url):
@@ -33,7 +33,7 @@ def is_supported_url(url):
     try:
         parsed_url = urlparse(url)
         domain = parsed_url.netloc.lower()
-        if domain.startswith('www.'):
+        if domain.startswith("www."):
             domain = domain[4:]
         return any(platform in domain for platform in SUPPORTED_PLATFORMS)
     except:
@@ -45,16 +45,16 @@ def get_platform_name(url):
         parsed_url = urlparse(url)
         domain = parsed_url.netloc.lower()
         
-        if 'youtube.com' in domain or 'youtu.be' in domain:
-            return 'YouTube'
-        elif 'instagram.com' in domain:
-            return 'Instagram'
-        elif 'facebook.com' in domain or 'fb.watch' in domain:
-            return 'Facebook'
+        if "youtube.com" in domain or "youtu.be" in domain:
+            return "YouTube"
+        elif "instagram.com" in domain:
+            return "Instagram"
+        elif "facebook.com" in domain or "fb.watch" in domain:
+            return "Facebook"
         else:
-            return 'Unknown'
+            return "Unknown"
     except:
-        return 'Unknown'
+        return "Unknown"
 
 def format_file_size(size_bytes):
     """Format file size in human readable format"""
@@ -82,17 +82,19 @@ async def check_subscription(bot, user_id):
     try:
         member = await bot.get_chat_member(chat_id=REQUIRED_CHANNEL, user_id=user_id)
         # Check if user is a member (subscribed) or admin/creator
-        # Note: 'left' means user left the channel, 'kicked' means banned
-        return member.status in ['member', 'administrator', 'creator']
+        # Note:  left  means user left the channel,  kicked  means banned
+        return member.status in [ member ,  administrator ,  creator ]
     except Exception as e:
         error_msg = str(e)
         logger.error(f"Error checking subscription for user {user_id}: {e}")
-        
-        # If the user is not found in the channel or other errors, they're not subscribed
+        # If the user is not found in the channel or other errors, they re not subscribed
         return False
 
 async def send_subscription_message(update, context):
-    """Send subscription requirement message"""
+    """Send subscription requirement message with join button"""
+    join_markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("Join Channel", url=f"https://t.me/{REQUIRED_CHANNEL.lstrip( @ )}")]
+    ])
     subscription_message = f"""
 🔒 **Subscription Required** 🔒
 
@@ -112,7 +114,7 @@ Once you subscribe, you can download videos from:
 
 **After subscribing, send /start again to use the bot!** ✨
     """
-    await update.message.reply_text(subscription_message, parse_mode='Markdown')
+    await update.message.reply_text(subscription_message, parse_mode="Markdown", reply_markup=join_markup)
 
 def download_video(url, user_id=None):
     """Download video from URL and return file path"""
@@ -122,31 +124,31 @@ def download_video(url, user_id=None):
             os.makedirs(DOWNLOAD_DIR)
             
         # Create user-specific subdirectory
-        user_dir = os.path.join(DOWNLOAD_DIR, str(user_id) if user_id else 'temp')
+        user_dir = os.path.join(DOWNLOAD_DIR, str(user_id) if user_id else "temp")
         if not os.path.exists(user_dir):
             os.makedirs(user_dir)
             
         # Configure yt-dlp options
         ydl_opts = {
-            'format': 'best[filesize<50M]/best',
-            'outtmpl': os.path.join(user_dir, '%(title)s.%(ext)s'),
-            'noplaylist': True,
-            'extractaudio': False,
-            'embed_subs': False,
-            'writesubtitles': False,
-            'writeautomaticsub': False,
-            'ignoreerrors': True,
+            "format": "best[filesize<50M]/best",
+            "outtmpl": os.path.join(user_dir, "%(title)s.%(ext)s"),
+            "noplaylist": True,
+            "extractaudio": False,
+            "embed_subs": False,
+            "writesubtitles": False,
+            "writeautomaticsub": False,
+            "ignoreerrors": True,
         }
         
         downloaded_file = None
         
         def progress_hook(d):
             nonlocal downloaded_file
-            if d['status'] == 'finished':
-                downloaded_file = d['filename']
+            if d["status"] == "finished":
+                downloaded_file = d["filename"]
                 logger.info(f"Download finished: {downloaded_file}")
         
-        ydl_opts['progress_hooks'] = [progress_hook]
+        ydl_opts["progress_hooks"] = [progress_hook]
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             # Extract video info first
@@ -157,18 +159,18 @@ def download_video(url, user_id=None):
                 return False, None, "Could not extract video information", None
             
             # Check file size before downloading
-            filesize = info.get('filesize') or info.get('filesize_approx', 0)
+            filesize = info.get("filesize") or info.get("filesize_approx", 0)
             if filesize and filesize > MAX_FILE_SIZE:
                 size_mb = filesize / (1024 * 1024)
                 return False, None, f"Video too large ({size_mb:.1f}MB). Maximum allowed size is 50MB", None
             
             # Check duration
-            duration = info.get('duration', 0)
+            duration = info.get("duration", 0)
             if duration and duration > 600:  # 10 minutes
                 return False, None, f"Video too long ({duration//60}:{duration%60:02d}). Maximum allowed duration is 10 minutes", None
             
             # Download the video
-            logger.info(f"Starting download for: {info.get('title', 'Unknown')}")
+            logger.info(f"Starting download for: {info.get( title ,  Unknown )}")
             ydl.download([url])
             
             if not downloaded_file or not os.path.exists(downloaded_file):
@@ -181,11 +183,11 @@ def download_video(url, user_id=None):
                 return False, None, f"Downloaded file too large ({format_file_size(actual_size)})", None
             
             video_info = {
-                'title': info.get('title', 'Unknown'),
-                'duration': info.get('duration', 0),
-                'uploader': info.get('uploader', 'Unknown'),
-                'file_size': actual_size,
-                'format': info.get('ext', 'unknown')
+                "title": info.get("title", "Unknown"),
+                "duration": info.get("duration", 0),
+                "uploader": info.get("uploader", "Unknown"),
+                "file_size": actual_size,
+                "format": info.get("ext", "unknown")
             }
             
             logger.info(f"Successfully downloaded: {downloaded_file}")
@@ -233,7 +235,7 @@ Thanks for being a member of {REQUIRED_CHANNEL}! You now have full access to dow
 ✅ Facebook (facebook.com, fb.watch)
 
 🚀 **How to use:**
-Simply send me any video URL and I'll download it for you instantly!
+Simply send me any video URL and I ll download it for you instantly!
 
 📊 **Features:**
 • Fast downloads up to 50MB
@@ -245,7 +247,7 @@ Simply send me any video URL and I'll download it for you instantly!
 
 Ready to download? Send me a video URL now! 🎬
     """
-    await update.message.reply_text(welcome_message, parse_mode='Markdown')
+    await update.message.reply_text(welcome_message, parse_mode="Markdown")
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /help command"""
@@ -286,7 +288,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Happy downloading! 🎬
     """
-    await update.message.reply_text(help_message, parse_mode='Markdown')
+    await update.message.reply_text(help_message, parse_mode="Markdown")
 
 async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle video URL messages"""
@@ -309,7 +311,7 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• Instagram (instagram.com)\n"
             "• Facebook (facebook.com, fb.watch)\n\n"
             "Please send a valid video URL from one of these platforms.",
-            parse_mode='Markdown'
+            parse_mode="Markdown"
         )
         return
     
@@ -319,7 +321,7 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
     status_message = await update.message.reply_text(
         f"🔍 **Processing {platform} video...**\n\n"
         "⏳ Starting download...",
-        parse_mode='Markdown'
+        parse_mode="Markdown"
     )
     
     try:
@@ -333,33 +335,33 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Update status
             await status_message.edit_text(
                 f"📤 **Uploading {platform} video...**\n\n"
-                f"**File size:** {format_file_size(download_info['file_size'])}\n"
+                f"**File size:** {format_file_size(download_info[ file_size ])}\n"
                 "Please wait...",
-                parse_mode='Markdown'
+                parse_mode="Markdown"
             )
             
             # Send the video file
-            with open(file_path, 'rb') as video_file:
-                duration = download_info.get('duration', 0) or 0
+            with open(file_path, "rb") as video_file:
+                duration = download_info.get("duration", 0) or 0
                 duration_str = f"{int(duration)//60}:{int(duration)%60:02d}" if duration > 0 else "Unknown"
                 
                 # Clean title and uploader for Telegram markdown
-                clean_title = download_info['title'].replace('*', '').replace('_', '').replace('[', '').replace(']', '')
-                clean_uploader = download_info['uploader'].replace('*', '').replace('_', '').replace('[', '').replace(']', '')
+                clean_title = download_info["title"].replace("*", " ").replace("_", " ").replace("[", " ").replace("]", " ")
+                clean_uploader = download_info["uploader"].replace("*", " ").replace("_", " ").replace("[", " ").replace("]", " ")
                 
                 caption = (
-                    f"🎥 {clean_title[:50]}{'...' if len(clean_title) > 50 else ''}\n\n"
+                    f"🎥 {clean_title[:50]}{ ...  if len(clean_title) > 50 else   }\n\n"
                     f"📺 Platform: {platform}\n"
                     f"⏱️ Duration: {duration_str}\n"
                     f"👤 Uploader: {clean_uploader}\n"
-                    f"📊 Size: {format_file_size(download_info['file_size'])}"
+                    f"📊 Size: {format_file_size(download_info[ file_size ])}"
                 )
                 
                 await context.bot.send_video(
                     chat_id=update.effective_chat.id,
                     video=video_file,
                     caption=caption[:1024],  # Telegram caption limit
-                    parse_mode='Markdown',
+                    parse_mode="Markdown",
                     supports_streaming=True
                 )
             
@@ -370,7 +372,7 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(
                 f"✅ **Download completed!**\n\n"
                 f"Your {platform} video has been successfully downloaded and sent!",
-                parse_mode='Markdown'
+                parse_mode="Markdown"
             )
             
             # Cleanup
@@ -381,7 +383,7 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 f"❌ **Download failed**\n\n"
                 f"**Error:** {error_message}\n\n"
                 "Please try again with a different video or check if the URL is correct.",
-                parse_mode='Markdown'
+                parse_mode="Markdown"
             )
             
     except Exception as e:
@@ -391,7 +393,7 @@ async def handle_url(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"Something went wrong while processing your {platform} video. "
             f"Please try again later.\n\n"
             f"**Error details:** {str(e)[:100]}...",
-            parse_mode='Markdown'
+            parse_mode="Markdown"
         )
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -407,21 +409,23 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     # Check if it might be a URL without protocol
-    if any(platform in text.lower() for platform in ['youtube.com', 'youtu.be', 'instagram.com', 'facebook.com', 'fb.watch']):
+    if any(platform in text.lower() for platform in ["youtube.com", "youtu.be", "instagram.com", "facebook.com", "fb.watch"]):
         # Try to fix the URL
-        if not text.startswith(('http://', 'https://')):
-            text = 'https://' + text
-            await handle_url(update._replace(message=update.message._replace(text=text)), context)
+        if not text.startswith(("http://", "https://")):
+            text = "https://" + text
+            fake_update = update
+            fake_update.message.text = text
+            await handle_url(fake_update, context)
             return
     
     await update.message.reply_text(
         "👋 **Hello!**\n\n"
-        "I'm a video downloader bot. Send me a video URL from:\n"
+        "I m a video downloader bot. Send me a video URL from:\n"
         "• YouTube\n"
         "• Instagram\n"
         "• Facebook\n\n"
         "Or use /help for more information!",
-        parse_mode='Markdown'
+        parse_mode="Markdown"
     )
 
 def main():
@@ -449,13 +453,13 @@ def main():
     
     # URL handler - matches http/https URLs
     application.add_handler(MessageHandler(
-        filters.Regex(r'https?://[^\s]+'), 
+        filters.Regex(r"https?://[^\s]+"), 
         handle_url
     ))
     
     # Text handler for non-URL messages
     application.add_handler(MessageHandler(
-        filters.TEXT & ~filters.COMMAND & ~filters.Regex(r'https?://[^\s]+'),
+        filters.TEXT & ~filters.COMMAND & ~filters.Regex(r"https?://[^\s]+"),
         handle_text
     ))
     
