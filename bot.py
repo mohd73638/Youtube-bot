@@ -119,7 +119,7 @@ Need more help? Contact your administrator.
         """Handle /status command"""
         try:
             github_status = await self.github_analyzer.check_api_status()
-           
+            
             if github_status:
                 github_status_text = "✅ Connected"
             else:
@@ -183,7 +183,8 @@ The bot will automatically monitor analyzed repositories for new commits and iss
     def _format_analysis_result(self, result):
         """Format analysis results for Telegram message"""
         if not result.get( success ):
-            return f"❌ Analysis failed: {result.get( error ,  Unknown error )}"
+            error_msg = result.get( error ,  Unknown error )
+            return f"❌ Analysis failed: {error_msg}"
         
         data = result.get( data , {})
         repo_info = data.get( repository , {})
