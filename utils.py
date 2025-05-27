@@ -39,6 +39,12 @@ def clean_filename(filename):
     return filename
 
 
+import os
+from config import TEMP_DIR
+
+def ensure_download_dir():
+    """Ensure download directory exists"""
+    os.makedirs(TEMP_DIR, exist_ok=True)
 import re
 
 def sanitize_filename(filename):
