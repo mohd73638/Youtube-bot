@@ -1,77 +1,174 @@
+import re
 import os
-import tempfile
+import subprocess
 import logging
 from urllib.parse import urlparse
-from config import SUPPORTED_PLATFORMS, DOWNLOAD_DIR
 
 logger = logging.getLogger(__name__)
 
-def is_supported_url(url):
-    """Check if the URL is from a supported platform"""
+def is_valid_url(url):
+    """Check if the provided string is a valid URL"""
     try:
-        parsed_url = urlparse(url)
-        domain = parsed_url.netloc.lower()
-        
-        # Remove 'www.' prefix if present
-        if domain.startswith('www.'):
-            domain = domain[4:]
-            
-        return any(platform in domain for platform in SUPPORTED_PLATFORMS)
-    except Exception as e:
-        logger.error(f"Error parsing URL {url}: {e}")
+        result = urlparse(url)
+        return all([result.scheme, result.netloc])
+    except:
         return False
+
+def clean_filename(filename):
+    """Clean filename for safe file system usage"""
+    if not filename:
+        return "video"
+    
+    # Remove or replace invalid characters
+    filename = re.sub(r'[<>:"/\\|?*]', '', filename)
+    filename = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', filename)
+    
+    # Limit length
+    if len(filename) > 100:
+        filename = filename[:100]
+    
+    # Remove leading/trailing spaces and dots
+    filename = filename.strip(' .')
+    
+    if not filename:
+        return "video"
+    
+    return filename
 
 def format_file_size(size_bytes):
     """Format file size in human readable format"""
-    if size_bytes == 0:
-        return "0 B"
+    if not size_bytes:
+        return "Unknown"
     
-    size_names = ["B", "KB", "MB", "GB"]
-    import math
-    i = int(math.floor(math.log(size_bytes, 1024)))
-    p = math.pow(1024, i)
-    s = round(size_bytes / p, 2)
-    return f"{s} {size_names[i]}"
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_bytes < 1024.0:
+            return f"{size_bytes:.1f} {unit}"
+        size_bytes /= 1024.0
+    return f"{size_bytes:.1f} TB"
 
-def cleanup_file(file_path):
-    """Safely delete a file"""
+def format_duration(seconds):
+    """Format duration in human readable format"""
+    if not seconds:
+        return "Unknown"
+    
     try:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            logger.info(f"Cleaned up file: {file_path}")
-    except Exception as e:
-        logger.error(f"Error cleaning up file {file_path}: {e}")
-
-def ensure_download_dir():
-    """Ensure download directory exists"""
-    if not os.path.exists(DOWNLOAD_DIR):
-        os.makedirs(DOWNLOAD_DIR)
-        logger.info(f"Created download directory: {DOWNLOAD_DIR}")
-
-def get_platform_name(url):
-    """Get the platform name from URL"""
-    try:
-        parsed_url = urlparse(url)
-        domain = parsed_url.netloc.lower()
+        seconds = int(seconds)
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        seconds = seconds % 60
         
-        if 'youtube.com' in domain or 'youtu.be' in domain:
-            return 'YouTube'
-        elif 'instagram.com' in domain:
-            return 'Instagram'
-        elif 'facebook.com' in domain or 'fb.watch' in domain:
-            return 'Facebook'
+        if hours > 0:
+            return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
         else:
-            return 'Unknown'
+            return f"{minutes:02d}:{seconds:02d}"
     except:
-        return 'Unknown'
+        return "Unknown"
 
-def sanitize_filename(filename):
-    """Sanitize filename for safe file operations"""
-    import re
-    # Remove or replace invalid characters
-    filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
-    # Limit length
-    if len(filename) > 200:
-        name, ext = os.path.splitext(filename)
-        filename = name[:200-len(ext)] + ext
-    return filename
+def get_file_size(file_path):
+    """Get file size in bytes"""
+    try:
+        return os.path.getsize(file_path)
+    except:
+        return 0
+
+def get_video_duration(file_path):
+    """Get video duration using ffprobe if available"""
+    try:
+        # Try using ffprobe first
+        cmd = [
+            'ffprobe', '-v', 'quiet', '-print_format', 'json',
+            '-show_format', file_path
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        
+        if result.returncode == 0:
+            import json
+            data = json.loads(result.stdout)
+            duration = float(data['format']['duration'])
+            return format_duration(duration)
+    except:
+        pass
+    
+    # Fallback: try to get from file metadata
+    try:
+        # This is a simple fallback, might not always work
+        stat = os.stat(file_path)
+        # We can't really get duration without proper tools, so return unknown
+        return "Unknown"
+    except:
+        return "Unknown"
+
+def extract_video_id(url):
+    """Extract video ID from various video platform URLs"""
+    patterns = {
+        'youtube': [
+            r'(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})',
+            r'youtube\.com\/embed\/([a-zA-Z0-9_-]{11})',
+        ],
+        'instagram': [
+            r'instagram\.com\/p\/([a-zA-Z0-9_-]+)',
+            r'instagram\.com\/reel\/([a-zA-Z0-9_-]+)',
+        ],
+        'tiktok': [
+            r'tiktok\.com\/@[^/]+\/video\/(\d+)',
+            r'vm\.tiktok\.com\/([a-zA-Z0-9]+)',
+        ],
+        'twitter': [
+            r'twitter\.com\/[^/]+\/status\/(\d+)',
+            r'x\.com\/[^/]+\/status\/(\d+)',
+        ]
+    }
+    
+    for platform, platform_patterns in patterns.items():
+        for pattern in platform_patterns:
+            match = re.search(pattern, url)
+            if match:
+                return {
+                    'platform': platform,
+                    'id': match.group(1)
+                }
+    
+    return {
+        'platform': 'unknown',
+        'id': None
+    }
+
+def is_supported_platform(url):
+    """Check if the URL is from a supported platform"""
+    supported_domains = [
+        'youtube.com', 'youtu.be', 'youtube-nocookie.com',
+        'instagram.com', 'instagr.am',
+        'tiktok.com', 'vm.tiktok.com',
+        'twitter.com', 'x.com', 't.co',
+        'facebook.com', 'fb.com', 'fb.watch',
+        'vimeo.com',
+        'dailymotion.com',
+        'twitch.tv',
+        'reddit.com', 'v.redd.it',
+        'streamable.com',
+        'imgur.com'
+    ]
+    
+    try:
+        domain = urlparse(url).netloc.lower()
+        # Remove www. prefix
+        domain = domain.replace('www.', '')
+        
+        return any(supported in domain for supported in supported_domains)
+    except:
+        return False
+
+def validate_environment():
+    """Validate that all required environment variables are set"""
+    required_vars = ['BOT_TOKEN']
+    missing_vars = []
+    
+    for var in required_vars:
+        if not os.getenv(var):
+            missing_vars.append(var)
+    
+    if missing_vars:
+        raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+    
+    return True
