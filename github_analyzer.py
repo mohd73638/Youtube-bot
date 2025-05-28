@@ -32,7 +32,7 @@ class GitHubAnalyzer:
         """Parse GitHub repository URL to extract owner and repo name"""
         try:
             # Remove trailing slash and common suffixes
-            repo_url = repo_url.rstrip( / ).replace( .git ,   )
+            repo_url = repo_url.rstrip('/').replace('.git', '')
             
             # Extract from different URL formats
             if  github.com/  in repo_url:
