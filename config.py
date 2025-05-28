@@ -33,7 +33,7 @@ class Config:
     AUDIO_FORMAT = os.getenv("AUDIO_FORMAT", "mp3")
 
     # Enable/disable audio extraction
-    ENABLE_AUDIO_EXTRACTION = os.getenv("ENABLE_AUDIO_EXTRACTION", "False").lower() == "True"
+    ENABLE_AUDIO_EXTRACTION = os.getenv("ENABLE_AUDIO_EXTRACTION", "false").lower() == "true"
 
     @classmethod
     def validate(cls):
