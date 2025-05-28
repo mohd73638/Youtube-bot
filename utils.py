@@ -47,7 +47,7 @@ def ensure_download_dir():
 
 def sanitize_filename(filename):
     """Removes or replaces invalid characters from filename"""
-    return re.sub(r [\\/*?:"<>|] , "_", filename)
+    return re.sub(r' [\\/*?:"<>|] ', "_", filename)
 
 def format_file_size(size_bytes):
     """Format file size in human readable format"""
