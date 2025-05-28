@@ -1,17 +1,13 @@
 import os
-print("TELEGRAM_BOT_TOKEN in os.environ:", "TELEGRAM_BOT_TOKEN" in os.environ)
-print("TELEGRAM_BOT_TOKEN value:", os.environ.get("TELEGRAM_BOT_TOKEN")) 
-import os
 import logging
 from telegram import Update, Bot, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from github_analyzer import GitHubAnalyzer
-import asyncio
-import json
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
-# Channel username for subscription check
 CHANNEL_USERNAME = os.environ.get("CHANNEL_USERNAME", "@atheraber").lstrip("@")
 
 class TelegramBot:
@@ -40,10 +36,11 @@ class TelegramBot:
         markup = InlineKeyboardMarkup([
             [InlineKeyboardButton("Join Channel", url=f"https://t.me/{CHANNEL_USERNAME}")]
         ])
-        await update.message.reply_text(
-            "🚫 To use this bot, please join our channel first.",
-            reply_markup=markup
-        )
+        if update.message:
+            await update.message.reply_text(
+                "🚫 To use this bot, please join our channel first.",
+                reply_markup=markup
+            )
 
     def is_running(self):
         """Check if bot is running"""
@@ -72,7 +69,8 @@ Welcome! I can help you analyze GitHub repositories for code issues and improvem
 
 Let's get started! 🚀
         """
-        await update.message.reply_text(welcome_message, parse_mode="Markdown")
+        if update.message:
+            await update.message.reply_text(welcome_message, parse_mode="Markdown")
     
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /help command"""
@@ -104,7 +102,8 @@ Let's get started! 🚀
 
 Need more help? Contact your administrator.
         """
-        await update.message.reply_text(help_message, parse_mode="Markdown")
+        if update.message:
+            await update.message.reply_text(help_message, parse_mode="Markdown")
     
     async def analyze_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /analyze command"""
@@ -114,46 +113,50 @@ Need more help? Contact your administrator.
             return
 
         if not context.args:
-            await update.message.reply_text(
-                "❌ Please provide a GitHub repository URL.\n"
-                "Example: `/analyze https://github.com/user/repo`",
-                parse_mode="Markdown"
-            )
+            if update.message:
+                await update.message.reply_text(
+                    "❌ Please provide a GitHub repository URL.\n"
+                    "Example: `/analyze https://github.com/user/repo`",
+                    parse_mode="Markdown"
+                )
             return
         
         repo_url = context.args[0]
         chat_id = update.effective_chat.id
 
-        # Send initial message
-        status_message = await update.message.reply_text(
-            "🔍 *Analyzing repository...*\n"
-            f"Repository: `{repo_url}`\n"
-            "This may take a few moments...",
-            parse_mode="Markdown"
-        )
+        status_message = None
+        if update.message:
+            status_message = await update.message.reply_text(
+                "🔍 *Analyzing repository...*\n"
+                f"Repository: `{repo_url}`\n"
+                "This may take a few moments...",
+                parse_mode="Markdown"
+            )
         
         try:
-            # Analyze the repository
             analysis_result = await self.github_analyzer.analyze_repository(repo_url)
             
             if analysis_result.get("success"):
-                # Format the results
                 result_message = self._format_analysis_result(analysis_result)
-                await status_message.edit_text(result_message, parse_mode="Markdown")
+                if status_message:
+                    await status_message.edit_text(result_message, parse_mode="Markdown")
             else:
-                await status_message.edit_text(
-                    f"❌ *Analysis Failed*\n"
-                    f"Error: {analysis_result.get('error', 'Unknown error')}",
-                    parse_mode="Markdown"
-                )
+                error_msg = analysis_result.get("error", "Unknown error")
+                if status_message:
+                    await status_message.edit_text(
+                        f"❌ *Analysis Failed*\n"
+                        f"Error: {error_msg}",
+                        parse_mode="Markdown"
+                    )
                 
         except Exception as e:
             logger.error(f"Error in analyze command: {str(e)}")
-            await status_message.edit_text(
-                "❌ *Analysis Failed*\n"
-                "An unexpected error occurred. Please try again later.",
-                parse_mode="Markdown"
-            )
+            if status_message:
+                await status_message.edit_text(
+                    "❌ *Analysis Failed*\n"
+                    "An unexpected error occurred. Please try again later.",
+                    parse_mode="Markdown"
+                )
     
     async def status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /status command"""
@@ -184,15 +187,16 @@ Need more help? Contact your administrator.
 
 Bot is ready to analyze repositories! 🚀
             """
-            
-            await update.message.reply_text(status_message, parse_mode="Markdown")
+            if update.message:
+                await update.message.reply_text(status_message, parse_mode="Markdown")
             
         except Exception as e:
             logger.error(f"Error in status command: {str(e)}")
-            await update.message.reply_text(
-                "❌ Error checking status. Please try again later.",
-                parse_mode="Markdown"
-            )
+            if update.message:
+                await update.message.reply_text(
+                    "❌ Error checking status. Please try again later.",
+                    parse_mode="Markdown"
+                )
     
     async def repos_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /repos command"""
@@ -201,7 +205,6 @@ Bot is ready to analyze repositories! 🚀
             await self.require_subscription(update)
             return
 
-        # For now, return a placeholder message
         repos_message = """
 📚 *Watched Repositories*
 
@@ -212,7 +215,8 @@ To add a repository to your watch list, use:
 
 The bot will automatically monitor analyzed repositories for new commits and issues.
         """
-        await update.message.reply_text(repos_message, parse_mode="Markdown")
+        if update.message:
+            await update.message.reply_text(repos_message, parse_mode="Markdown")
     
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle regular messages"""
@@ -221,19 +225,20 @@ The bot will automatically monitor analyzed repositories for new commits and iss
             await self.require_subscription(update)
             return
 
-        message_text = update.message.text.lower()
+        message_text = update.message.text.lower() if update.message and update.message.text else ""
         
         if "github.com" in message_text and ("http" in message_text or "https" in message_text):
-            # User sent a GitHub URL, suggest using /analyze
-            await update.message.reply_text(
-                "🔗 I detected a GitHub repository URL!\n"
-                f"Use `/analyze {update.message.text}` to analyze this repository.",
-                parse_mode="Markdown"
-            )
+            if update.message:
+                await update.message.reply_text(
+                    "🔗 I detected a GitHub repository URL!\n"
+                    f"Use `/analyze {update.message.text}` to analyze this repository.",
+                    parse_mode="Markdown"
+                )
         else:
-            await update.message.reply_text(
-                "👋 Hello! Use /help to see available commands or /analyze to analyze a GitHub repository."
-            )
+            if update.message:
+                await update.message.reply_text(
+                    "👋 Hello! Use /help to see available commands or /analyze to analyze a GitHub repository."
+                )
     
     def _format_analysis_result(self, result):
         """Format analysis results for Telegram message"""
@@ -278,53 +283,36 @@ The bot will automatically monitor analyzed repositories for new commits and iss
         if not self.application:
             return
         
-        # Command handlers
         self.application.add_handler(CommandHandler("start", self.start_command))
         self.application.add_handler(CommandHandler("help", self.help_command))
         self.application.add_handler(CommandHandler("analyze", self.analyze_command))
         self.application.add_handler(CommandHandler("status", self.status_command))
         self.application.add_handler(CommandHandler("repos", self.repos_command))
-        
-        # Message handler for regular text messages
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
     
-    
-          async def process_update(self, update_data):
-    """Process webhook update from Telegram (async-safe)"""
-    try:
-        if not self.application:
-            self.application = Application.builder().token(self.token).build()
-            self.setup_handlers()
-        
-        update = Update.de_json(update_data, self.bot)
-        await self.application.process_update(update)
-        
-    except Exception as e:
-        logger.error(f"Error processing Telegram update: {str(e)}")
-        raise
-        
+    async def process_update(self, update_data):
+        """Process webhook update from Telegram (async-safe)"""
+        try:
+            if not self.application:
+                self.application = Application.builder().token(self.token).build()
+                self.setup_handlers()
+            update = Update.de_json(update_data, self.bot)
+            await self.application.process_update(update)
         except Exception as e:
             logger.error(f"Error processing Telegram update: {str(e)}")
             raise
 
 # --- FastAPI Webserver for Webhook-only Deployment ---
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
-
 webserver = FastAPI()
 telegram_bot = TelegramBot()
 
-async def process_update(self, update_data):
-    """Process webhook update from Telegram (async-safe)"""
+@webserver.post("/webhook")
+async def telegram_webhook(request: Request):
     try:
-        if not self.application:
-            self.application = Application.builder().token(self.token).build()
-            self.setup_handlers()
-        
-        update = Update.de_json(update_data, self.bot)
-        await self.application.process_update(update)
-        
+        update_data = await request.json()
+        await telegram_bot.process_update(update_data)
+        return JSONResponse(content={"ok": True})
     except Exception as e:
-        logger.error(f"Error processing Telegram update: {str(e)}")
-        raise
+        logger.error(f"Error in webhook endpoint: {str(e)}")
+        return JSONResponse(content={"ok": False, "error": str(e)}, status_code=500)
