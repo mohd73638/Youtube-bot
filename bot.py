@@ -23,7 +23,14 @@ class TelegramBot:
         self.running = False
         self.setup_handlers()
         self._initialized = False
-    
+        
+    async def startup(self):
+    """Initialize the bot properly"""
+    await self.application.initialize()
+    await self.application.start()
+    logger.info("Bot initialized and started")
+
+
     async def check_subscription(self, user_id):
         """Check if user is a member of the required channel"""
         try:
@@ -298,25 +305,39 @@ The bot will automatically monitor analyzed repositories for new commits and iss
     async def error_handler(self, update, context):
         logger.error("Exception while handling an update:", exc_info=context.error)
         if update and update.effective_message:
-            await update.effective_message.reply_text("⚠️ An error occurred. Please try again later.")
+            await update.effective_message.reply_text("⚠️ An internal error occurred.  developers have been notified.",
+parse_mode="markdown"
+)
 
     async def process_update(self, update_data):
-        """Process webhook update from Telegram (async-safe)"""
-        try:
-            if not getattr(self,"_initialized",False):
-                await self.application.initialize()
-                await self.application.bot.initialize()
-                self._initialized = True
-            update = Update.de_json(update_data, self.bot)
-            await self.application.process_update(update)
-        except Exception as e:
-            logger.error(f"Error processing Telegram update: {str(e)}")
-            raise
+    """Process webhook update from Telegram (async-safe)"""
+    try:
+        if not hasattr(self, "_application"):
+            # Initialize only once
+            await self.application.initialize()
+            await self.application.start()
+            await self.application.updater.start_webhook(
+                listen="0.0.0.0",
+                port=8000,
+                url_path=self.token,
+                webhook_url=f"{Config.WEBHOOK_URL}/webhook"
+            )
+            self._initialized = True
+            
+        update = Update.de_json(update_data, self.bot)
+        await self.application.process_update(update)
+    except Exception as e:
+        logger.error(f"Error processing update: {str(e)}", exc_info=True)
+        raise
 
 # --- FastAPI Webserver for Webhook-only Deployment ---
 
 webserver = FastAPI()
 telegram_bot = TelegramBot()
+
+@webserver.on_event("startup")
+async def on_startup():
+    await telegram_bot.startup()
 
 @webserver.post("/webhook")
 async def telegram_webhook(request: Request):
@@ -325,5 +346,8 @@ async def telegram_webhook(request: Request):
         await telegram_bot.process_update(update_data)
         return JSONResponse(content={"ok": True})
     except Exception as e:
-        logger.error(f"Error in webhook endpoint: {str(e)}")
-        return JSONResponse(content={"ok": False, "error": str(e)}, status_code=500)
+        logger.error(f"Webhook error: {str(e)}", exc_info=True)
+        return JSONResponse(
+            content={"ok": False, "error": str(e)},
+            status_code=500
+        )
