@@ -1,6 +1,5 @@
 import os
 import logging
-from github_analyzer import GitHubAnalyzer
 from code_analyzer import CodeAnalyzer
 import asyncio
 from typing import Dict, List, Any
