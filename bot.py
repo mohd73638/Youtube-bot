@@ -312,7 +312,7 @@ parse_mode="markdown"
     async def process_update(self, update_data):
         """Process webhook update from Telegram (async-safe)"""
         try:
-        if not hasattr(self, "_application"):
+            if not hasattr(self, "_application"):
             # Initialize only once
             await self.application.initialize()
             await self.application.start()
