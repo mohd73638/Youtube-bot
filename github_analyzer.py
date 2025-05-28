@@ -35,7 +35,7 @@ class GitHubAnalyzer:
             repo_url = repo_url.rstrip('/').replace('.git', '')
             
             # Extract from different URL formats
-            if  github.com/  in repo_url:
+            if "github.com/" in repo_url:
                 # Extract from https://github.com/owner/repo format
                 parts = repo_url.split( github.com/ )[-1].split( / )
                 if len(parts) >= 2:
