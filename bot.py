@@ -5,6 +5,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from github_analyzer import GitHubAnalyzer
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from video_downlaoder import VideoDownlaoder
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,9 @@ class TelegramBot:
         self.running = False
         self.setup_handlers()
         self._initialized = False
-        
+        self.downlaoder = VideoDownlaoder()
+        self.MAX_VIDEO_SIZE = 50 * 1024 * 1024 
+    
     async def startup(self):
         """Initialize the bot properly"""
         await self.application.initialize()
@@ -166,6 +169,51 @@ Need more help? Contact your administrator.
                     "An unexpected error occurred. Please try again later.",
                     parse_mode="Markdown"
                 )
+                
+    async def handle_video_download(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Process video download requests"""
+        try:
+            url = update.message.text
+        
+        # Check supported platforms
+            if not any(x in url for x in [
+                'youtube.com', 'youtu.be',
+                'tiktok.com', 'instagram.com',
+                'twitter.com', 'x.com',
+                'facebook.com', 'fb.watch'
+            ]):
+                await update.message.reply_text("❌ Unsupported platform. Send YouTube/TikTok/Instagram/Twitter/Facebook links.")
+                return
+
+            msg = await update.message.reply_text("⏳ Downloading... (This may take a while)")
+        
+        # Download video
+            file_path, title = await asyncio.to_thread(
+                self.downloader.download_video,
+                url,
+                self.MAX_VIDEO_SIZE
+            )
+        
+        # Send to Telegram
+            await update.message.reply_video(
+                video=open(file_path, 'rb'),
+                caption=f"🎬 {title[:200]}",
+                supports_streaming=True,
+                filename=f"{title[:64]}.mp4"
+            )
+        
+            await msg.delete()
+            os.remove(file_path)  # Clean up
+        
+        except Exception as e:
+            error_msg = str(e)
+            if "File too large" in error_msg:
+                await update.message.reply_text("❌ Video exceeds 50MB limit")
+            elif "Unsupported URL" in error_msg:
+                await update.message.reply_text("❌ This platform requires cookies - cannot download")
+            else:
+                await update.message.reply_text(f"❌ Download failed: {error_msg[:200]}")
+
     
     async def status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /status command"""
@@ -228,26 +276,22 @@ The bot will automatically monitor analyzed repositories for new commits and iss
             await update.message.reply_text(repos_message, parse_mode="Markdown")
     
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle regular messages"""
-        user_id = update.effective_user.id
-        if not await self.check_subscription(user_id):
-            await self.require_subscription(update)
-            return
-
-        message_text = update.message.text.lower() if update.message and update.message.text else ""
-        
-        if "github.com" in message_text and ("http" in message_text or "https" in message_text):
-            if update.message:
-                await update.message.reply_text(
-                    "🔗 I detected a GitHub repository URL!\n"
-                    f"Use `/analyze {update.message.text}` to analyze this repository.",
-                    parse_mode="Markdown"
-                )
-        else:
-            if update.message:
-                await update.message.reply_text(
-                    "👋 Hello! Use /help to see available commands or /analyze to analyze a GitHub repository."
-                )
+    text = update.message.text.lower()
+    
+    # Video download handler
+    if any(x in text for x in ['youtube', 'tiktok', 'instagram', 'twitter', 'x.com', 'facebook']):
+        return await self.handle_video_download(update, context)
+    
+    # Existing GitHub handler
+    elif "github.com" in text:
+        await update.message.reply_text("🔗 Use /analyze for GitHub repos")
+    
+    # Default response
+    else:
+        await update.message.reply_text(
+            "Send me a video link from:\n"
+            "• YouTube\n• TikTok\n• Instagram\n• Twitter/X\n• Facebook"
+        )
     
     def _format_analysis_result(self, result):
         """Format analysis results for Telegram message"""
@@ -310,22 +354,33 @@ parse_mode="markdown"
 )
 
     async def process_update(self, update_data):
-        """Process webhook update from Telegram (async-safe)"""
-        try:
-            if not hasattr(self, "_application"):
-            # Initialize only once
+    """Process webhook update from Telegram (async-safe)"""
+    try:
+        # Ensure application exists
+        if not hasattr(self, 'application'):
+            self.application = Application.builder().token(self.token).build()
+            self.setup_handlers()
+            
+        # Initialize if not already done
+        if not getattr(self, '_initialized', False):
             await self.application.initialize()
             await self.application.start()
-            await self.application.updater.start_webhook(
-                listen="0.0.0.0",
-                port=8000,
-                url_path=self.token,
-                webhook_url=f"{Config.WEBHOOK_URL}/webhook"
-            )
+            
+            # Only setup webhook if using webhook mode
+            if hasattr(self.application, 'updater') and self.application.updater:
+                await self.application.updater.start_webhook(
+                    listen="0.0.0.0",
+                    port=8000,
+                    url_path=self.token,
+                    webhook_url=f"{Config.WEBHOOK_URL}/webhook"
+                )
+            
             self._initialized = True
             
+        # Process the update
         update = Update.de_json(update_data, self.bot)
         await self.application.process_update(update)
+        
     except Exception as e:
         logger.error(f"Error processing update: {str(e)}", exc_info=True)
         raise
