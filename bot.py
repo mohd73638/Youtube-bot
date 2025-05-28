@@ -277,22 +277,22 @@ The bot will automatically monitor analyzed repositories for new commits and iss
             await update.message.reply_text(repos_message, parse_mode="Markdown")
     
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text.lower()
+        text = update.message.text.lower()
     
     # Video download handler
-    if any(x in text for x in ['youtube', 'tiktok', 'instagram', 'twitter', 'x.com', 'facebook']):
-        return await self.handle_video_download(update, context)
+        if any(x in text for x in ['youtube', 'tiktok', 'instagram', 'twitter', 'x.com', 'facebook']):
+            return await self.handle_video_download(update, context)
     
     # Existing GitHub handler
-    elif "github.com" in text:
-        await update.message.reply_text("🔗 Use /analyze for GitHub repos")
+        elif "github.com" in text:
+            await update.message.reply_text("🔗 Use /analyze for GitHub repos")
     
     # Default response
-    else:
-        await update.message.reply_text(
-            "Send me a video link from:\n"
-            "• YouTube\n• TikTok\n• Instagram\n• Twitter/X\n• Facebook"
-        )
+        else:
+            await update.message.reply_text(
+                "Send me a video link from:\n"
+                "• YouTube\n• TikTok\n• Instagram\n• Twitter/X\n• Facebook"
+            )
     
     def _format_analysis_result(self, result):
         """Format analysis results for Telegram message"""
