@@ -3,48 +3,30 @@ import yt_dlp
 import logging
 from config import YT_DLP_OPTIONS, MAX_FILE_SIZE, DOWNLOAD_DIR
 from utils import cleanup_file, format_file_size, sanitize_filename, ensure_download_dir
+from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
 class VideoDownloader:
-    def __init__(self):
-        ensure_download_dir()
+    @staticmethod
+    def get_video_info(url: str) -> dict:
+        """Get video metadata without downloading"""
+        with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
+            return ydl.extract_info(url, download=False)
 
-    def download(self, url, user_id=None):
-        """Alias for download_video method for backward compatibility"""
-        try:
-            success, file_path, error_msg, info = self.download_video(url, user_id=user_id)
-            if success:
-                return {"success": True, "file_path": file_path, "title": info.get("title") if info else None}
-            else:
-                return {"success": False, "error": error_msg}
-        except Exception as e:
-            return {"success": False, "error": str(e)}
-
-    def download_video(self, url, user_id=None):
+    @staticmethod
+    def download_video(url: str, max_size: int = 50*1024*1024) -> Tuple[str, str]:
         """
-        Download video from URL and return file path.
-        Returns: (success: bool, file_path: str, error_message: str, video_info: dict)
+        Downloads video and returns (file_path, title)
+        Handles YouTube, TikTok, Instagram, Twitter, etc.
         """
-        try:
-            user_dir = os.path.join(DOWNLOAD_DIR, str(user_id) if user_id else "temp")
-            os.makedirs(user_dir, exist_ok=True)
-
-            ydl_opts = YT_DLP_OPTIONS.copy()
-            # Clean and limit output template
-            ydl_opts["outtmpl"] = os.path.join(user_dir, "video_%(id)s.%(ext)s")
-
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                downloaded_file = ydl.prepare_filename(info)
-
-            file_size = os.path.getsize(downloaded_file)
-            if file_size > MAX_FILE_SIZE:
-                cleanup_file(downloaded_file)
-                return False, None, "حجم الملف أكبر من الحد المسموح به.", info
-
-            return True, downloaded_file, None, info
-
-        except Exception as e:
-            logger.error(f"خطأ أثناء التحميل: {e}")
-            return False, None, str(e), None
+        ydl_opts = {
+            'format': 'best[filesize<50M]',
+            'outtmpl': '%(title)s.%(ext)s',
+            'max_filesize': max_size,
+            'merge_output_format': 'mp4'
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            return ydl.prepare_filename(info), info.get('title', 'video')
