@@ -28,8 +28,8 @@ def clean_filename(filename):
     if not filename:
         return "video"
     # Remove or replace invalid characters
-    filename = re.sub(r [<>:"/\\|?*] ,   , filename)
-    filename = re.sub(r [\x00-\x1f\x7f-\x9f] ,   , filename)
+    filename = re.sub(r' [<>:"/\\|?*]', '  ', filename)
+    filename = re.sub(r' [\x00-\x1f\x7f-\x9f]' , ' ' , filename)
     # Limit length
     if len(filename) > 100:
         filename = filename[:100]
