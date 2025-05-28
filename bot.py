@@ -296,6 +296,7 @@ The bot will automatically monitor analyzed repositories for new commits and iss
             if not self.application:
                 self.application = Application.builder().token(self.token).build()
                 self.setup_handlers()
+                await application.initialize()
             update = Update.de_json(update_data, self.bot)
             await self.application.process_update(update)
         except Exception as e:
