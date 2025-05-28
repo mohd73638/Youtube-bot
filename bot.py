@@ -22,7 +22,7 @@ class TelegramBot:
         self.github_analyzer = GitHubAnalyzer()
         self.running = False
         self.setup_handlers()
-        self._initialized = false
+        self._initialized = False
     
     async def check_subscription(self, user_id):
         """Check if user is a member of the required channel"""
