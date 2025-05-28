@@ -1,4 +1,3 @@
-
 import os
 import logging
 from telegram import Update, Bot, InlineKeyboardMarkup, InlineKeyboardButton
@@ -28,7 +27,7 @@ class TelegramBot:
         """Check if user is a member of the required channel"""
         try:
             chat_member = await self.bot.get_chat_member(chat_id="@" + CHANNEL_USERNAME, user_id=user_id)
-            return chat_member.status in [ creator ,  administrator ,  member ]
+            return chat_member.status in ["creator", "administrator", "member"]
         except Exception as e:
             logger.warning(f"Subscription check failed for user {user_id}: {e}")
             return False
@@ -68,7 +67,7 @@ Welcome! I can help you analyze GitHub repositories for code issues and improvem
 *Example:*
 `/analyze https://github.com/user/repo`
 
-Let s get started! 🚀
+Let's get started! 🚀
         """
         await update.message.reply_text(welcome_message, parse_mode="Markdown")
     
@@ -87,7 +86,7 @@ Let s get started! 🚀
 • `/help` - Show this help message
 • `/analyze <repo_url>` - Analyze a GitHub repository for issues
 • `/status` - Check bot and GitHub API status
-• `/repos` - List repositories you re watching
+• `/repos` - List repositories you're watching
 
 *How to analyze a repository:*
 1. Use `/analyze` followed by a GitHub repository URL
@@ -141,7 +140,7 @@ Need more help? Contact your administrator.
             else:
                 await status_message.edit_text(
                     f"❌ *Analysis Failed*\n"
-                    f"Error: {analysis_result.get( error ,  Unknown error )}",
+                    f"Error: {analysis_result.get('error', 'Unknown error')}",
                     parse_mode="Markdown"
                 )
                 
@@ -245,15 +244,15 @@ The bot will automatically monitor analyzed repositories for new commits and iss
         suggestions = data.get("suggestions", [])
         
         message = f"✅ *Analysis Complete*\n\n"
-        message += f"📦 *Repository:* {repo_info.get( name ,  Unknown )}\n"
-        message += f"👤 *Owner:* {repo_info.get( owner ,  Unknown )}\n"
-        message += f"🌟 *Stars:* {repo_info.get( stars ,  N/A )}\n"
-        message += f"📝 *Language:* {repo_info.get( language ,  N/A )}\n\n"
+        message += f"📦 *Repository:* {repo_info.get('name', 'Unknown')}\n"
+        message += f"👤 *Owner:* {repo_info.get('owner', 'Unknown')}\n"
+        message += f"🌟 *Stars:* {repo_info.get('stars', 'N/A')}\n"
+        message += f"📝 *Language:* {repo_info.get('language', 'N/A')}\n\n"
         
         if issues:
             message += f"⚠️ *Issues Found ({len(issues)}):*\n"
             for i, issue in enumerate(issues[:5], 1):  # Limit to 5 issues
-                message += f"{i}. {issue.get( type ,  unknown )}: {issue.get( description ,  No description )}\n"
+                message += f"{i}. {issue.get('type', 'unknown')}: {issue.get('description', 'No description')}\n"
             
             if len(issues) > 5:
                 message += f"... and {len(issues) - 5} more issues\n"
