@@ -93,7 +93,7 @@ class CodeAnalyzer:
             "general": [
                 {
                     "type": "Security",
-                    "pattern": r'password\s*=\s*["\'][^"\']+["\']',
+                    "pattern": r password\s*=\s*["\ ][^"\ ]+["\ ] ,
                     "description": "Hardcoded password detected",
                     "severity": "critical"
                 },
@@ -222,8 +222,8 @@ class CodeAnalyzer:
                     while next_line_idx < len(lines) and not lines[next_line_idx].strip():
                         next_line_idx += 1
                     if (next_line_idx >= len(lines) or 
-                        not lines[next_line_idx].strip().startswith( """ ) and 
-                        not lines[next_line_idx].strip().startswith("   ")):
+                        (not lines[next_line_idx].strip().startswith( """ ) and 
+                         not lines[next_line_idx].strip().startswith("   "))):
                         issues.append({
                             "type": "Best Practice",
                             "description": "Public function missing docstring",
@@ -239,8 +239,8 @@ class CodeAnalyzer:
                     while next_line_idx < len(lines) and not lines[next_line_idx].strip():
                         next_line_idx += 1
                     if (next_line_idx >= len(lines) or 
-                        not lines[next_line_idx].strip().startswith( """ ) and 
-                        not lines[next_line_idx].strip().startswith("   ")):
+                        (not lines[next_line_idx].strip().startswith( """ ) and 
+                         not lines[next_line_idx].strip().startswith("   "))):
                         issues.append({
                             "type": "Best Practice",
                             "description": "Class missing docstring",
