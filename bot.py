@@ -239,7 +239,12 @@ The bot will automatically monitor analyzed repositories for new commits and iss
                 await update.message.reply_text(
                     "👋 Hello! Use /help to see available commands or /analyze to analyze a GitHub repository."
                 )
-    
+    async def error_handler(self, update, context):
+        logger.error("Exception while handling an update:", exc_info=context.error)
+        # Optionally, notify the user:
+        if update and update.effective_message:
+            await update.effective_message.reply_text("⚠️ An error occurred. Please try again later.")
+            
     def _format_analysis_result(self, result):
         """Format analysis results for Telegram message"""
         if not result.get("success"):
@@ -289,7 +294,8 @@ The bot will automatically monitor analyzed repositories for new commits and iss
         self.application.add_handler(CommandHandler("status", self.status_command))
         self.application.add_handler(CommandHandler("repos", self.repos_command))
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
-    
+        self.application.add_error_handler(self.error_handler)
+        
     async def process_update(self, update_data):
         """Process webhook update from Telegram (async-safe)"""
         try:
