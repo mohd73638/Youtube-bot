@@ -5,7 +5,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 from github_analyzer import GitHubAnalyzer
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from video_downlaoder import VideoDownlaoder
+from video_downloader import VideoDownloader
 import asyncio
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ class TelegramBot:
         self.running = False
         self.setup_handlers()
         self._initialized = False
-        self.downlaoder = VideoDownlaoder()
+        self.downliloader = VideoDownloader()
         self.MAX_VIDEO_SIZE = 50 * 1024 * 1024 
     
     async def startup(self):
