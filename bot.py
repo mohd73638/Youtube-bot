@@ -1,4 +1,6 @@
 import os
+print("Current directory:", os.getcwd())
+print("Files:", os.listdir())
 import logging
 from telegram import Update, Bot, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
