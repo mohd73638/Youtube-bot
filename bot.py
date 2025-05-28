@@ -355,36 +355,36 @@ parse_mode="markdown"
 )
 
     async def process_update(self, update_data):
-    """Process webhook update from Telegram (async-safe)"""
-    try:
+        """Process webhook update from Telegram (async-safe)"""
+        try:
         # Ensure application exists
-        if not hasattr(self, 'application'):
-            self.application = Application.builder().token(self.token).build()
-            self.setup_handlers()
+            if not hasattr(self, 'application'):
+                self.application = Application.builder().token(self.token).build()
+                self.setup_handlers()
             
         # Initialize if not already done
-        if not getattr(self, '_initialized', False):
-            await self.application.initialize()
-            await self.application.start()
+            if not getattr(self, '_initialized', False):
+                await self.application.initialize()
+                await self.application.start()
             
             # Only setup webhook if using webhook mode
-            if hasattr(self.application, 'updater') and self.application.updater:
-                await self.application.updater.start_webhook(
-                    listen="0.0.0.0",
-                    port=8000,
-                    url_path=self.token,
-                    webhook_url=f"{Config.WEBHOOK_URL}/webhook"
-                )
+                if hasattr(self.application, 'updater') and self.application.updater:
+                    await self.application.updater.start_webhook(
+                        listen="0.0.0.0",
+                        port=8000,
+                        url_path=self.token,
+                        webhook_url=f"{Config.WEBHOOK_URL}/webhook"
+                    )
             
             self._initialized = True
             
         # Process the update
-        update = Update.de_json(update_data, self.bot)
-        await self.application.process_update(update)
+            update = Update.de_json(update_data, self.bot)
+            await self.application.process_update(update)
         
-    except Exception as e:
-        logger.error(f"Error processing update: {str(e)}", exc_info=True)
-        raise
+        except Exception as e:
+            logger.error(f"Error processing update: {str(e)}", exc_info=True)
+            raise
 
 # --- FastAPI Webserver for Webhook-only Deployment ---
 
