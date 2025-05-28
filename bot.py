@@ -18,10 +18,12 @@ class TelegramBot:
             raise ValueError("Telegram bot token is required")
         
         self.bot = Bot(token=self.token)
-        self.application = None
+        self.application = Application.builder().token(self.token).build()
         self.github_analyzer = GitHubAnalyzer()
         self.running = False
-
+        self.setup_handlers()
+        self._initialized = false
+    
     async def check_subscription(self, user_id):
         """Check if user is a member of the required channel"""
         try:
@@ -289,14 +291,22 @@ The bot will automatically monitor analyzed repositories for new commits and iss
         self.application.add_handler(CommandHandler("status", self.status_command))
         self.application.add_handler(CommandHandler("repos", self.repos_command))
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
-    
+        self.application.add_error_handler(self.error_handler)
+
+    # ... your other handler methods (start_command, help_command, etc.) ...
+
+    async def error_handler(self, update, context):
+        logger.error("Exception while handling an update:", exc_info=context.error)
+        if update and update.effective_message:
+            await update.effective_message.reply_text("⚠️ An error occurred. Please try again later.")
+
     async def process_update(self, update_data):
         """Process webhook update from Telegram (async-safe)"""
         try:
-            if not self.application:
-                self.application = Application.builder().token(self.token).build()
-                self.setup_handlers()
+            if not getattr(self,"_initialized",false):
                 await self.application.initialize()
+                await self.application.bot.initialize()
+                self._initialized = True
             update = Update.de_json(update_data, self.bot)
             await self.application.process_update(update)
         except Exception as e:
