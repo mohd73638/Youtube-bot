@@ -34,9 +34,11 @@ class GitHubAnalyzer:
             repo_url = repo_url.rstrip('/').replace('.git', '')
             
             # Extract from different URL formats
-            if "github.com/" in repo_url:
+            from urllib.parse import urlparse
+            parsed_url = urlparse(repo_url)
+            if parsed_url.hostname == "github.com":
                 # Extract from https://github.com/owner/repo format
-                parts = repo_url.split("github.com/")[-1].split("/")
+                parts = parsed_url.path.strip("/").split("/")
                 if len(parts) >= 2:
                     owner = parts[0]
                     repo = parts[1]
