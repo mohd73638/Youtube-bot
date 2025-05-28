@@ -6,6 +6,7 @@ from github_analyzer import GitHubAnalyzer
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from video_downlaoder import VideoDownlaoder
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +171,7 @@ Need more help? Contact your administrator.
                     parse_mode="Markdown"
                 )
                 
-    async def handle_video_download(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def handle_video(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Process video download requests"""
         try:
             url = update.message.text
