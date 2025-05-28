@@ -1,4 +1,7 @@
 import os
+print("TELEGRAM_BOT_TOKEN in os.environ:", "TELEGRAM_BOT_TOKEN" in os.environ)
+print("TELEGRAM_BOT_TOKEN value:", os.environ.get("TELEGRAM_BOT_TOKEN")) 
+import os
 import logging
 from telegram import Update, Bot, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
