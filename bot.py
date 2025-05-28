@@ -25,10 +25,10 @@ class TelegramBot:
         self._initialized = False
         
     async def startup(self):
-    """Initialize the bot properly"""
-    await self.application.initialize()
-    await self.application.start()
-    logger.info("Bot initialized and started")
+        """Initialize the bot properly"""
+        await self.application.initialize()
+        await self.application.start()
+        logger.info("Bot initialized and started")
 
 
     async def check_subscription(self, user_id):
@@ -310,8 +310,8 @@ parse_mode="markdown"
 )
 
     async def process_update(self, update_data):
-    """Process webhook update from Telegram (async-safe)"""
-    try:
+        """Process webhook update from Telegram (async-safe)"""
+        try:
         if not hasattr(self, "_application"):
             # Initialize only once
             await self.application.initialize()
