@@ -303,7 +303,7 @@ The bot will automatically monitor analyzed repositories for new commits and iss
     async def process_update(self, update_data):
         """Process webhook update from Telegram (async-safe)"""
         try:
-            if not getattr(self,"_initialized",false):
+            if not getattr(self,"_initialized",False):
                 await self.application.initialize()
                 await self.application.bot.initialize()
                 self._initialized = True
