@@ -93,7 +93,7 @@ class CodeAnalyzer:
             "general": [
                 {
                     "type": "Security",
-                    "pattern": r password\s*=\s*["\ ][^"\ ]+["\ ] ,
+                    "pattern": r'password\s*=\s*["\'][^"\']+["\']',
                     "description": "Hardcoded password detected",
                     "severity": "critical"
                 },
