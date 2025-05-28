@@ -37,7 +37,7 @@ class GitHubAnalyzer:
             # Extract from different URL formats
             if "github.com/" in repo_url:
                 # Extract from https://github.com/owner/repo format
-                parts = repo_url.split( github.com/ )[-1].split( / )
+                parts = repo_url.split("github.com/")[-1].split("/")
                 if len(parts) >= 2:
                     owner = parts[0]
                     repo = parts[1]
@@ -62,58 +62,58 @@ class GitHubAnalyzer:
             except GithubException as e:
                 if e.status == 404:
                     return {
-                         success : False,
-                         error : f"Repository not found: {owner}/{repo_name}"
+                        "success": False,
+                        "error": f"Repository not found: {owner}/{repo_name}"
                     }
                 elif e.status == 403:
                     return {
-                         success : False,
-                         error : "Access denied. Repository may be private or rate limit exceeded."
+                        "success": False,
+                        "error": "Access denied. Repository may be private or rate limit exceeded."
                     }
                 else:
                     return {
-                         success : False,
-                         error : f"GitHub API error: {e.data.get( message , str(e))}"
+                        "success": False,
+                        "error": f"GitHub API error: {e.data.get('message', str(e))}"
                     }
             
             # Gather repository information
             repo_info = {
-                 name : repo.name,
-                 full_name : repo.full_name,
-                 owner : repo.owner.login,
-                 description : repo.description,
-                 language : repo.language,
-                 stars : repo.stargazers_count,
-                 forks : repo.forks_count,
-                 open_issues : repo.open_issues_count,
-                 size : repo.size,
-                 created_at : repo.created_at.isoformat() if repo.created_at else None,
-                 updated_at : repo.updated_at.isoformat() if repo.updated_at else None
+                "name": repo.name,
+                "full_name": repo.full_name,
+                "owner": repo.owner.login,
+                "description": repo.description,
+                "language": repo.language,
+                "stars": repo.stargazers_count,
+                "forks": repo.forks_count,
+                "open_issues": repo.open_issues_count,
+                "size": repo.size,
+                "created_at": repo.created_at.isoformat() if repo.created_at else None,
+                "updated_at": repo.updated_at.isoformat() if repo.updated_at else None
             }
             
             # Analyze repository contents
             analysis_result = await self._analyze_repository_contents(repo)
             
             return {
-                 success : True,
-                 data : {
-                     repository : repo_info,
-                     issues : analysis_result[ issues ],
-                     suggestions : analysis_result[ suggestions ],
-                     file_analysis : analysis_result[ file_analysis ]
+                "success": True,
+                "data": {
+                    "repository": repo_info,
+                    "issues": analysis_result["issues"],
+                    "suggestions": analysis_result["suggestions"],
+                    "file_analysis": analysis_result["file_analysis"]
                 }
             }
             
         except ValueError as e:
             return {
-                 success : False,
-                 error : str(e)
+                "success": False,
+                "error": str(e)
             }
         except Exception as e:
             logger.error(f"Unexpected error analyzing repository: {str(e)}")
             return {
-                 success : False,
-                 error : f"Analysis failed: {str(e)}"
+                "success": False,
+                "error": f"Analysis failed: {str(e)}"
             }
     
     async def _analyze_repository_contents(self, repo) -> Dict[str, Any]:
@@ -149,9 +149,9 @@ class GitHubAnalyzer:
                     
                     # Get file content
                     try:
-                        file_data = file_content.decoded_content.decode( utf-8 )
+                        file_data = file_content.decoded_content.decode("utf-8")
                     except (UnicodeDecodeError, Exception):
-                        # Skip files that can t be decoded
+                        # Skip files that can't be decoded
                         continue
                     
                     # Analyze the file
@@ -182,22 +182,22 @@ class GitHubAnalyzer:
             suggestions.append("Could not fully analyze repository contents due to access limitations")
         
         return {
-             issues : issues,
-             suggestions : suggestions,
-             file_analysis : file_analysis
+            "issues": issues,
+            "suggestions": suggestions,
+            "file_analysis": file_analysis
         }
     
     def _get_file_extension(self, filename: str) -> str:
         """Get file extension from filename"""
-        return filename.split( . )[-1].lower() if  .  in filename else   
+        return filename.split(".")[-1].lower() if "." in filename else ""
     
     def _should_analyze_file(self, extension: str) -> bool:
         """Check if file should be analyzed based on extension"""
         analyzable_extensions = {
-             py ,  js ,  ts ,  jsx ,  tsx ,  java ,  cpp ,  c ,  h , 
-             cs ,  php ,  rb ,  go ,  rs ,  swift ,  kt ,  scala ,
-             html ,  css ,  scss ,  less ,  json ,  xml ,  yaml ,  yml ,
-             md ,  txt ,  sh ,  bash ,  sql ,  dockerfile 
+            "py", "js", "ts", "jsx", "tsx", "java", "cpp", "c", "h", 
+            "cs", "php", "rb", "go", "rs", "swift", "kt", "scala",
+            "html", "css", "scss", "less", "json", "xml", "yaml", "yml",
+            "md", "txt", "sh", "bash", "sql", "dockerfile"
         }
         return extension in analyzable_extensions
     
@@ -211,19 +211,19 @@ class GitHubAnalyzer:
             file_names = [f.name.lower() for f in contents if f.type == "file"]
             
             # Check for README
-            if not any( readme  in name for name in file_names):
+            if not any("readme" in name for name in file_names):
                 suggestions.append("Consider adding a README.md file to document your project")
             
             # Check for license
-            if not any( license  in name for name in file_names):
+            if not any("license" in name for name in file_names):
                 suggestions.append("Consider adding a LICENSE file to specify project licensing")
             
             # Check for gitignore
-            if  .gitignore  not in file_names:
+            if ".gitignore" not in file_names:
                 suggestions.append("Consider adding a .gitignore file to exclude unnecessary files")
             
             # Check for CI/CD configuration
-            ci_files = [ .github ,  .gitlab-ci.yml ,  Jenkinsfile ,  .travis.yml ]
+            ci_files = [".github", ".gitlab-ci.yml", "Jenkinsfile", ".travis.yml"]
             if not any(ci_file in file_names for ci_file in ci_files):
                 suggestions.append("Consider setting up CI/CD pipeline for automated testing")
             
@@ -250,24 +250,24 @@ class GitHubAnalyzer:
         """Get language-specific suggestions"""
         suggestions = []
         
-        if language ==  python :
-            if  requirements.txt  not in file_names and  pyproject.toml  not in file_names:
+        if language == "python":
+            if "requirements.txt" not in file_names and "pyproject.toml" not in file_names:
                 suggestions.append("Consider adding requirements.txt or pyproject.toml for dependency management")
-            if  setup.py  not in file_names and  pyproject.toml  not in file_names:
+            if "setup.py" not in file_names and "pyproject.toml" not in file_names:
                 suggestions.append("Consider adding setup.py or pyproject.toml for package configuration")
                 
-        elif language ==  javascript  or language ==  typescript :
-            if  package.json  not in file_names:
+        elif language == "javascript" or language == "typescript":
+            if "package.json" not in file_names:
                 suggestions.append("Consider adding package.json for dependency management")
-            if  .eslintrc  not in file_names and  .eslintrc.json  not in file_names:
+            if ".eslintrc" not in file_names and ".eslintrc.json" not in file_names:
                 suggestions.append("Consider adding ESLint configuration for code quality")
                 
-        elif language ==  java :
-            if  pom.xml  not in file_names and  build.gradle  not in file_names:
+        elif language == "java":
+            if "pom.xml" not in file_names and "build.gradle" not in file_names:
                 suggestions.append("Consider using Maven (pom.xml) or Gradle (build.gradle) for build management")
                 
-        elif language ==  go :
-            if  go.mod  not in file_names:
+        elif language == "go":
+            if "go.mod" not in file_names:
                 suggestions.append("Consider adding go.mod for module management")
         
         return suggestions
