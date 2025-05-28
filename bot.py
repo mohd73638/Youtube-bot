@@ -288,19 +288,21 @@ The bot will automatically monitor analyzed repositories for new commits and iss
         # Message handler for regular text messages
         self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
     
-    def process_update(self, update_data):
-        """Process webhook update from Telegram"""
-        try:
-            if not self.application:
-                self.application = Application.builder().token(self.token).build()
-                self.setup_handlers()
-            
-            # Create Update object from webhook data
-            update = Update.de_json(update_data, self.bot)
-            
-            # Process the update
-            asyncio.run(self.application.process_update(update))
-            
+    
+          async def process_update(self, update_data):
+    """Process webhook update from Telegram (async-safe)"""
+    try:
+        if not self.application:
+            self.application = Application.builder().token(self.token).build()
+            self.setup_handlers()
+        
+        update = Update.de_json(update_data, self.bot)
+        await self.application.process_update(update)
+        
+    except Exception as e:
+        logger.error(f"Error processing Telegram update: {str(e)}")
+        raise
+        
         except Exception as e:
             logger.error(f"Error processing Telegram update: {str(e)}")
             raise
