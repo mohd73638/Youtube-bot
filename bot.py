@@ -315,12 +315,16 @@ from fastapi.responses import JSONResponse
 webserver = FastAPI()
 telegram_bot = TelegramBot()
 
-@webserver.post("/webhook")
-async def telegram_webhook(request: Request):
-    data = await request.json()
+async def process_update(self, update_data):
+    """Process webhook update from Telegram (async-safe)"""
     try:
-        telegram_bot.process_update(data)
-        return JSONResponse(content={"ok": True})
+        if not self.application:
+            self.application = Application.builder().token(self.token).build()
+            self.setup_handlers()
+        
+        update = Update.de_json(update_data, self.bot)
+        await self.application.process_update(update)
+        
     except Exception as e:
-        logger.error(f"Error in webhook endpoint: {str(e)}")
-        return JSONResponse(content={"ok": False, "error": str(e)}, status_code=500)
+        logger.error(f"Error processing Telegram update: {str(e)}")
+        raise
