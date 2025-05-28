@@ -171,5 +171,5 @@ def validate_environment():
         if not os.getenv(var):
             missing_vars.append(var)
     if missing_vars:
-        raise ValueError(f"Missing required environment variables: { ,  .join(missing_vars)}")
+        raise ValueError(f"Missing required environment variables: {',  '.join(missing_vars)}")
     return True
