@@ -12,6 +12,29 @@ from telegram.ext import (
     ContextTypes,
     filters
 )
+from fastapi import FastAPI, Request
+from telegram import Update
+
+app = FastAPI()
+
+def set_webhook():
+    """Run once during deployment to set webhook URL"""
+    from config import Config
+    import requests
+    requests.post(
+        f"https://api.telegram.org/bot{Config.TELEGRAM_BOT_TOKEN}/setWebhook",
+        json={"url": f"{Config.WEBHOOK_URL}/webhook/telegram"}
+    )
+
+@app.post("/webhook/telegram")
+async def telegram_webhook(request: Request):
+    """Handle Telegram updates"""
+    update = Update.de_json(await request.json(), bot)
+    await YouTubeBot().process_update(update)
+    return {"status": "ok"}
+
+# Keep your existing YouTubeBot class
+
 from config import Config
 from video_downloader import VideoDownloader
 from utils import is_supported_url, cleanup_file
