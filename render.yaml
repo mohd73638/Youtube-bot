@@ -3,12 +3,14 @@ services:
     name: youtube-bot
     env: python
     plan: free
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "python bot.py"
+    buildCommand: |
+      pip install -r requirements.txt
+      python -c "from bot import set_webhook; set_webhook()"
+    startCommand: "uvicorn app:app --host 0.0.0.0 --port 10000"
     envVars:
       - key: TELEGRAM_BOT_TOKEN
-        value: ${{TELEGRAM_BOT_TOKEN}}  # From Render secrets
       - key: WEBHOOK_URL
-        value: ${{WEBHOOK_URL}}  # From Render secrets
       - key: CHANNEL_USERNAME
-        value: "atheraber"  # Your channel
+        value: "atheraber"
+      - key: SESSION_SECRET
+        value: ${{SESSION_SECRET}}  # For Flask sessions
