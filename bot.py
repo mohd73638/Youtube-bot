@@ -15,7 +15,7 @@ from telegram.ext import (
 from fastapi import FastAPI, Request
 from telegram import Update
 
-app = FastAPI()
+webservice = FastAPI()
 
 def set_webhook():
     """Run once during deployment to set webhook URL"""
