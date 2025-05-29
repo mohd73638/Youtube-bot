@@ -38,7 +38,7 @@ async def telegram_webhook(request: Request):
 def set_webhook():
     import requests
     from config import Config
-    url = f"{Config.WEBHOOK_URL}{Config.WEBHOOK_PATH}"
+    url = f"{Config.APP_URL}/webhook/telegram"
     response = requests.post(
         f"https://api.telegram.org/bot{Config.TELEGRAM_BOT_TOKEN}/setWebhook",
         json={"url": url}
