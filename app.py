@@ -6,6 +6,15 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from bot import TelegramBot
 from webhook_handler import WebhookHandler
 
+flask_app = Flask(__name__)
+
+@flask_app.route("/webhook/telegram", methods=["POST"])
+def flask_webhook():
+    """Fallback webhook handler"""
+    update = Update.de_json(request.get_json(), YouTubeBot().app.bot)
+    YouTubeBot().process_update(update)
+    return {"status": "ok"}
+
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG,
