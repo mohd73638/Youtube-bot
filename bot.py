@@ -23,8 +23,6 @@ webserver = FastAPI()
 def read_root():
     return {"message": "Hello World"}
 
-webservice = FastAPI()
-
 def set_webhook():
     """Run once during deployment to set webhook URL"""
     from config import Config
