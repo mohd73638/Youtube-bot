@@ -34,6 +34,17 @@ def set_webhook():
         json={"url": f"{Config.WEBHOOK_URL}/webhook/telegram"}
     )
 
+# Add to bot.py
+def set_webhook():
+    import requests
+    from config import Config
+    url = f"{Config.WEBHOOK_URL}{Config.WEBHOOK_PATH}"
+    response = requests.post(
+        f"https://api.telegram.org/bot{Config.TELEGRAM_BOT_TOKEN}/setWebhook",
+        json={"url": url}
+    )
+    logger.info(f"Webhook set to: {url} | Status: {response.status_code}")
+
 @webservice.post("/webhook/telegram")
 async def telegram_webhook(request: Request):
     """Handle Telegram updates"""
