@@ -3,3 +3,4 @@ yt-dlp==2023.11.16
 python-dotenv==1.0.0
 send2trash==1.8.2
 uvicorn
+fastapi
