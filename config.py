@@ -1,47 +1,85 @@
+
+import logging
 import os
+import yt_dlp
+from typing import Tuple, Optional, Dict
 from pathlib import Path
-class Config:
-    """Configuration class for the bot with Render.com optimizations"""
-    
-    # --- Required Configs ---
-    TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-    WEBHOOK_URL = os.getenv("WEBHOOK_URL", "https://youtube-bot-3-1g9w.onrender.com")
+from config import Config
+from utils import cleanup_file
+import time
 
-    # --- Path Configurations ---
-    BASE_DIR = Path(__file__).parent.parent
-    TEMP_DIR = BASE_DIR / os.getenv("TEMP_DIR", "temp")
-    DOWNLOAD_DIR = BASE_DIR / "downloads"
+logger = logging.getLogger(__name__)
 
-    # --- Download Settings ---
-    MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE", 50 * 1024 * 1024))  # 50MB
-    DOWNLOAD_TIMEOUT = int(os.getenv("DOWNLOAD_TIMEOUT", 300))  # 5 minutes
-    VIDEO_QUALITY = os.getenv("VIDEO_QUALITY", "best[height<=720]")  # 720p max
-    AUDIO_FORMAT = os.getenv("AUDIO_FORMAT", "mp3")
-    ENABLE_AUDIO_EXTRACTION = os.getenv("ENABLE_AUDIO_EXTRACTION", "false").lower() == "true"
+class VideoDownloader:
+    @staticmethod
+    def get_video_info(url: str) -> Optional[dict]:
+        """Fetch video metadata with enhanced error handling."""
+        try:
+            with yt_dlp.YoutubeDL({
+                "quiet": True,
+                "no_warnings": True,
+                "logger": logger
+            }) as ydl:
+                start_time = time.time()
+                info = ydl.extract_info(url, download=False)
+                logger.info(f"Fetched metadata in {time.time()-start_time:.2f}s")
+                return info
+        except yt_dlp.utils.DownloadError as e:
+            logger.error(f"Metadata fetch failed (invalid URL): {str(e)}")
+        except Exception as e:
+            logger.error(f"Unexpected metadata error: {str(e)}")
+        return None
 
-    # --- YT-DLP Options ---
-    YT_DLP_OPTIONS = {
-        "format": "best",
-        "noplaylist": True,
-        "quiet": True,
-        "no_warnings": True,
-        "paths": {
-            "home": str(DOWNLOAD_DIR),
-            "temp": str(TEMP_DIR)
-        }
-    }
+    @staticmethod
+    def download_video(url: str, max_size: int = 50*1024*1024) -> Tuple[Optional[str], Optional[str]]:
+        """Download video with temp file handling and progress tracking."""
+        temp_file = None
+        try:
+            # Prepare download directory
+            download_dir = Config.get_temp_dir()
+            os.makedirs(download_dir, exist_ok=True)
+            
+            ydl_opts = {
+                "format": "best[filesize<50M]",
+                "outtmpl": os.path.join(download_dir, "%(title)s.%(ext)s"),
+                "max_filesize": max_size,
+                "quiet": True,
+                "logger": logger,
+                "noprogress": False,
+                "progress_hooks": [VideoDownloader._progress_hook],
+                "postprocessor_hooks": [VideoDownloader._postprocess_hook]
+            }
+            
+            start_time = time.time()
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                file_path = ydl.prepare_filename(info)
+                
+                # Verify download completed
+                if not os.path.exists(file_path):
+                    raise FileNotFoundError("Downloaded file not found")
+                
+                logger.info(f"Download completed in {time.time()-start_time:.2f}s")
+                return file_path, info.get("title", "Untitled")
+                
+        except yt_dlp.utils.DownloadError as e:
+            logger.error(f"Download failed: {str(e)}")
+        except Exception as e:
+            logger.error(f"Download error: {str(e)}")
+            if temp_file and os.path.exists(temp_file):
+                cleanup_file(temp_file)
+        return None, None
 
-    @classmethod
-    def validate(cls):
-        """Validate config and create directories"""
-        # Create required directories
-        cls.TEMP_DIR.mkdir(exist_ok=True, parents=True)
-        cls.DOWNLOAD_DIR.mkdir(exist_ok=True, parents=True)
+    @staticmethod
+    def _progress_hook(d: Dict) -> None:
+        """Handle download progress updates."""
+        if d[ status ] ==  downloading :
+            percent = d.get( _percent_str , "?")
+            speed = d.get( _speed_str , "?")
+            logger.debug(f"Downloading: {percent} at {speed}")
 
-        # Validate required vars
-        if not cls.TELEGRAM_BOT_TOKEN:
-            raise ValueError("TELEGRAM_BOT_TOKEN is required")
-        if not cls.WEBHOOK_URL:
-            raise ValueError("WEBHOOK_URL is required")
-
-        return True
+    @staticmethod
+    def _postprocess_hook(d: Dict) -> None:
+        """Handle post-processing events."""
+        if d[ status ] ==  finished :
+            logger.debug("Post-processing completed")
