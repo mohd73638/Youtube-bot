@@ -78,7 +78,9 @@ class YouTubeBot:
         if not await self._check_subscription(update.effective_user.id):
             await self._require_subscription(update)
             return
-            
+   async def _help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        await update.message.reply_text("This is the help message. Use /start to begin.")
+
         await update.message.reply_text(
             "🎬 *AtherAber Video Bot*\n\n"
             "Send links from:\n"
