@@ -4,10 +4,11 @@ services:
     env: python
     plan: free
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "uvicorn bot:webserver --host 0.0.0.0 --port 10000"
+    startCommand: "python bot.py"
     envVars:
       - key: TELEGRAM_BOT_TOKEN
+        value: ${{TELEGRAM_BOT_TOKEN}}  # From Render secrets
       - key: WEBHOOK_URL
-      - key: SESSION_SECRET
-      - key: FLASK_ENV
-        value: production
+        value: ${{WEBHOOK_URL}}  # From Render secrets
+      - key: CHANNEL_USERNAME
+        value: "atheraber"  # Your channel
