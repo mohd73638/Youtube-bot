@@ -25,7 +25,7 @@ class Config:
 
     # Temporary directory for downloads
     TEMP_DIR = os.getenv("TEMP_DIR", "temp")
-
+    int(os.getenv("MAX_FILE_SIZE", 50 * 1024 * 1024))  # 50MB
     # Video quality settings
     VIDEO_QUALITY = os.getenv("VIDEO_QUALITY", "best[height<=720]")  # 720p max
 
