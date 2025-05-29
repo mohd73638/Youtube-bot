@@ -2,6 +2,7 @@ import os
 import logging
 from telegram import Update, Bot, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from config import YT_DLP_OPTIONS  # Should match exactly
 from github_analyzer import GitHubAnalyzer
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
