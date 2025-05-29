@@ -45,7 +45,7 @@ def set_webhook():
     )
     logger.info(f"Webhook set to: {url} | Status: {response.status_code}")
 
-@webservice.post("/webhook/telegram")
+@app.post("/webhook/telegram")
 async def telegram_webhook(request: Request):
     """Handle Telegram updates"""
     update = Update.de_json(await request.json(), bot)
