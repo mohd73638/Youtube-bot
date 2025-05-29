@@ -39,7 +39,14 @@ def clean_filename(filename):
         return "video"
     return filename
 
-from config import TEMP_DIR
+from config import Config
+from pathlib import Path
+
+def get_temp_path(filename: str) -> Path:
+    """Get safe temp file path"""
+    Config.initialize()  # Ensure dir exists
+    return (Config.TEMP_DIR / filename).resolve()
+
 
 def ensure_download_dir():
     """Ensure download directory exists"""
