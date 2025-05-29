@@ -13,6 +13,7 @@ class Config:
     TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]  # Will fail fast if missing
     APP_URL = os.getenv("APP_URL", "")
     WEBHOOK_PATH = "/webhook/telegram"
+    WEBHOOK_URL = f"{APP_URL}{WEBHOOK_PATH}"
     
     # Channel system (using your @atheraber)
     CHANNEL_USERNAME = os.getenv("CHANNEL_USERNAME", "atheraber").lstrip("@")
