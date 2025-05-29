@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 YT_DLP_OPTIONS = {
     "format": "best",
@@ -23,6 +24,8 @@ class Config:
     MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE", 50 * 1024 * 1024))  # 50MB default
     DOWNLOAD_TIMEOUT = int(os.getenv("DOWNLOAD_TIMEOUT", 300))  # 5 minutes
 
+    #system path
+    BASE_DIR = Path(__file__).parent.parent
     # Temporary directory for downloads
     TEMP_DIR = os.getenv("TEMP_DIR", "temp")
     int(os.getenv("MAX_FILE_SIZE", 50 * 1024 * 1024))  # 50MB
@@ -37,6 +40,7 @@ class Config:
 
     @classmethod
     def validate(cls):
+        cls.TEMP_DIR.mkdir(exist_ok=True,parents=True)
         """Validate configuration"""
         if not cls.TELEGRAM_BOT_TOKEN:
             raise ValueError("TELEGRAM_BOT_TOKEN environment variable is required")
