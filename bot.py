@@ -1,9 +1,6 @@
 import logging
-from telegram import (
-    Update,
-    InlineKeyboardMarkup,
-    InlineKeyboardButton
-)
+import sys
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -13,66 +10,36 @@ from telegram.ext import (
     filters
 )
 from fastapi import FastAPI, Request
-from telegram import Update
-
-from fastapi import FastAPI
-
-webserver = FastAPI()
-
-@webserver.get("/")
-def read_root():
-    return {"message": "Hello World"}
-
-@webserver.head("/")
-def head_root():
-    return {}
-
-@webserver.post("/webhook/telegram")
-async def telegram_webhook(request: Request):
-    """Handle Telegram updates"""
-    update = Update.de_json(await request.json(), bot)
-    await YouTubeBot().process_update(update)
-    return {"status": "ok"}
-    
-# Add to bot.py
-def set_webhook():
-    import requests
-    from config import Config
-    url = f"{Config.APP_URL}/webhook/telegram"
-    response = requests.post(
-        f"https://api.telegram.org/bot{Config.TELEGRAM_BOT_TOKEN}/setWebhook",
-        json={"url": url}
-    )
-    logger.info(f"Webhook set to: {url} | Status: {response.status_code}")
-
-
-# Keep your existing YouTubeBot class
-
 from config import Config
 from video_downloader import VideoDownloader
 from utils import is_supported_url, cleanup_file
 
+# Configure logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
+# Global FastAPI and PTB instances
+webserver = FastAPI()
+bot_application = Application.builder().token(Config.TELEGRAM_BOT_TOKEN).build()
+
 class YouTubeBot:
     def __init__(self):
-        self.app = Application.builder().token(Config.TELEGRAM_BOT_TOKEN).build()
+        self.app = bot_application  # Use the global PTB Application
         self.downloader = VideoDownloader()
         self._register_handlers()
 
     def _register_handlers(self):
-        """All handlers with subscription checks"""
+        """Register all command and message handlers"""
         self.app.add_handler(CommandHandler("start", self._start))
         self.app.add_handler(CommandHandler("help", self._help))
         self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message))
         self.app.add_handler(CallbackQueryHandler(self._verify_subscription, pattern="^verify_sub$"))
 
     async def _check_subscription(self, user_id: int) -> bool:
-        """Robust channel membership check"""
+        """Check if user is subscribed to the channel"""
         if not Config.CHANNEL_USERNAME:
             return True
             
@@ -83,24 +50,24 @@ class YouTubeBot:
             )
             return chat_member.status in ["member", "administrator", "creator"]
         except Exception as e:
-            logger.error(f"Subscription check failed: {str(e)}")
+            logger.error(f"Subscription check failed: {e}")
             return False
 
     async def _require_subscription(self, update: Update):
-        """Interactive join prompt"""
+        """Prompt user to join the channel"""
         keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("✨ Join AtherAber", url=Config.CHANNEL_LINK)],
+            [InlineKeyboardButton("✨ Join Channel", url=Config.CHANNEL_LINK)],
             [InlineKeyboardButton("✅ Verify Join", callback_data="verify_sub")]
         ])
         
         await update.message.reply_text(
-            "📢 To use this bot, please join our channel first:",
+            "📢 Please join our channel to use this bot:",
             reply_markup=keyboard,
             disable_web_page_preview=True
         )
 
     async def _verify_subscription(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle verification button"""
+        """Handle subscription verification"""
         query = update.callback_query
         await query.answer()
         
@@ -110,17 +77,17 @@ class YouTubeBot:
             await query.answer("You haven't joined yet!", show_alert=True)
 
     async def _start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Start command with channel check"""
+        """/start command handler"""
         if not await self._check_subscription(update.effective_user.id):
             await self._require_subscription(update)
             return
-            
-    async def _help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("This is the help message. Use /start to begin.")
+        await update.message.reply_text("Hello! Send me a YouTube/TikTok/Instagram link.")
 
+    async def _help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """/help command handler"""
         await update.message.reply_text(
-            "🎬 *AtherAber Video Bot*\n\n"
-            "Send links from:\n"
+            "🎬 *Video Download Bot*\n\n"
+            "Supported platforms:\n"
             "- YouTube\n- TikTok\n- Instagram\n\n"
             f"Channel: {Config.CHANNEL_LINK}",
             parse_mode="Markdown",
@@ -136,7 +103,7 @@ class YouTubeBot:
             
         url = update.message.text
         if not is_supported_url(url):
-            await update.message.reply_text("❌ Unsupported platform. Try YouTube/TikTok/Instagram links.")
+            await update.message.reply_text("❌ Unsupported link. Try YouTube/TikTok/Instagram.")
             return
 
         try:
@@ -152,24 +119,41 @@ class YouTubeBot:
                 cleanup_file(file_path)
             else:
                 await msg.edit_text("❌ Download failed")
-                
         except Exception as e:
-            logger.error(f"Download error: {str(e)}")
+            logger.error(f"Download error: {e}")
             await update.message.reply_text(f"⚠️ Error: {str(e)[:200]}")
 
-    def run(self):
-        """Start the bot"""
-        logger.info(f"Starting bot for channel: {Config.CHANNEL_LINK}")
-        self.app.run_polling()
+# FastAPI Routes
+@webserver.get("/")
+def read_root():
+    return {"status": "Bot is running"}
+
+@webserver.post(Config.WEBHOOK_PATH)
+async def telegram_webhook(request: Request):
+    """Handle Telegram updates via webhook"""
+    update_data = await request.json()
+    update = Update.de_json(update_data, bot_application.bot)
+    await bot_application.process_update(update)
+    return {"status": "ok"}
+
+def set_webhook():
+    """Register the webhook with Telegram"""
+    import requests
+    try:
+        response = requests.post(
+            f"https://api.telegram.org/bot{Config.TELEGRAM_BOT_TOKEN}/setWebhook",
+            json={"url": Config.WEBHOOK_URL}
+        )
+        logger.info(f"Webhook set: {Config.WEBHOOK_URL} | Status: {response.status_code}")
+    except Exception as e:
+        logger.error(f"Failed to set webhook: {e}")
 
 if __name__ == "__main__":
-    YouTubeBot().run()
-
-if __name__ == "__main__":
-    import sys
     if "--webhook" in sys.argv:
-        from fastapi import FastAPI
-        app = FastAPI()
-        # ... (FastAPI setup)
+        # Webhook mode (for Render)
+        set_webhook()
+        import uvicorn
+        uvicorn.run(webserver, host="0.0.0.0", port=8000)
     else:
-        YouTubeBot().run()  # Standard polling
+        # Polling mode (for local testing)
+        YouTubeBot().run()
