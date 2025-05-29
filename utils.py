@@ -1,182 +1,55 @@
-import re
 import os
-import subprocess
 import logging
-from urllib.parse import urlparse
+import shutil
+from pathlib import Path
+from typing import Optional
+from send2trash import send2trash
 
 logger = logging.getLogger(__name__)
 
-def is_valid_url(url):
-    """Check if the provided string is a valid URL"""
+def cleanup_file(path: str) -> bool:
+    """Safely remove files with different strategies for temp vs. permanent files."""
     try:
-        result = urlparse(url)
-        return all([result.scheme, result.netloc])
-    except:
-        return False
-
-def cleanup_file(file_path):
-    """Safely delete a file if it exists"""
-    try:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-            logger.info(f"Cleaned up file: {file_path}")
-    except Exception as e:
-        logger.error(f"Error cleaning up file {file_path}: {e}")
-
-def clean_filename(filename):
-    """Clean filename for safe file system usage"""
-    if not filename:
-        return "video"
-    # Remove or replace invalid characters
-    filename = re.sub(r' [<>:"/\\|?*]', '  ', filename)
-    filename = re.sub(r' [\x00-\x1f\x7f-\x9f]' , ' ' , filename)
-    # Limit length
-    if len(filename) > 100:
-        filename = filename[:100]
-    # Remove leading/trailing spaces and dots
-    filename = filename.strip(" .")
-    if not filename:
-        return "video"
-    return filename
-
-from config import Config
-from pathlib import Path
-
-def get_temp_path(filename: str) -> Path:
-    """Get safe temp file path"""
-    Config.initialize()  # Ensure dir exists
-    return (Config.TEMP_DIR / filename).resolve()
-
-
-def ensure_download_dir():
-    """Ensure download directory exists"""
-    os.makedirs(TEMP_DIR, exist_ok=True)
-
-def sanitize_filename(filename):
-    """Removes or replaces invalid characters from filename"""
-    return re.sub(r' [\\/*?:"<>|] ', "_", filename)
-
-def format_file_size(size_bytes):
-    """Format file size in human readable format"""
-    if not size_bytes:
-        return "Unknown"
-    for unit in ["B", "KB", "MB", "GB"]:
-        if size_bytes < 1024.0:
-            return f"{size_bytes:.1f} {unit}"
-        size_bytes /= 1024.0
-    return f"{size_bytes:.1f} TB"
-
-def format_duration(seconds):
-    """Format duration in human readable format"""
-    if not seconds:
-        return "Unknown"
-    try:
-        seconds = int(seconds)
-        hours = seconds // 3600
-        minutes = (seconds % 3600) // 60
-        seconds = seconds % 60
-        if hours > 0:
-            return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+        path_obj = Path(path)
+        if not path_obj.exists():
+            return True
+            
+        # Use system trash for user downloads, immediate delete for temp files
+        if str(path_obj).startswith(Config.get_temp_dir()):
+            path_obj.unlink()
         else:
-            return f"{minutes:02d}:{seconds:02d}"
-    except:
-        return "Unknown"
-
-def get_file_size(file_path):
-    """Get file size in bytes"""
-    try:
-        return os.path.getsize(file_path)
-    except:
-        return 0
-
-def get_video_duration(file_path):
-    """Get video duration using ffprobe if available"""
-    try:
-        # Try using ffprobe first
-        cmd = [
-            "ffprobe", "-v", "quiet", "-print_format", "json",
-            "-show_format", file_path
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-        if result.returncode == 0:
-            import json
-            data = json.loads(result.stdout)
-            duration = float(data["format"]["duration"])
-            return format_duration(duration)
-    except:
-        pass
-    # Fallback: try to get from file metadata
-    try:
-        # This is a simple fallback, might not always work
-        os.stat(file_path)
-        # We can t really get duration without proper tools, so return unknown
-        return "Unknown"
-    except:
-        return "Unknown"
-
-def extract_video_id(url):
-    """Extract video ID from various video platform URLs"""
-    patterns = {
-        "youtube": [
-            r"(?:youtube\.com/watch\?v=|youtu\.be/)([a-zA-Z0-9_-]{11})",
-            r"youtube\.com/embed/([a-zA-Z0-9_-]{11})",
-        ],
-        "instagram": [
-            r"instagram\.com/p/([a-zA-Z0-9_-]+)",
-            r"instagram\.com/reel/([a-zA-Z0-9_-]+)",
-        ],
-        "tiktok": [
-            r"tiktok\.com/@[^/]+/video/(\d+)",
-            r"vm\.tiktok\.com/([a-zA-Z0-9]+)",
-        ],
-        "twitter": [
-            r"twitter\.com/[^/]+/status/(\d+)",
-            r"x\.com/[^/]+/status/(\d+)",
-        ]
-    }
-    for platform, platform_patterns in patterns.items():
-        for pattern in platform_patterns:
-            match = re.search(pattern, url)
-            if match:
-                return {
-                    "platform": platform,
-                    "id": match.group(1)
-                }
-    return {
-        "platform": "unknown",
-        "id": None
-    }
-
-def is_supported_platform(url):
-    """Check if the URL is from a supported platform"""
-    supported_domains = [
-        "youtube.com", "youtu.be", "youtube-nocookie.com",
-        "instagram.com", "instagr.am",
-        "tiktok.com", "vm.tiktok.com",
-        "twitter.com", "x.com", "t.co",
-        "facebook.com", "fb.com", "fb.watch",
-        "vimeo.com",
-        "dailymotion.com",
-        "twitch.tv",
-        "reddit.com", "v.redd.it",
-        "streamable.com",
-        "imgur.com"
-    ]
-    try:
-        domain = urlparse(url).netloc.lower()
-        # Remove www. prefix
-        domain = domain.replace("www.", "")
-        return any(supported in domain for supported in supported_domains)
-    except:
+            send2trash(str(path_obj))
+            
+        logger.info(f"Cleaned up: {path}")
+        return True
+    except Exception as e:
+        logger.error(f"Cleanup failed for {path}: {str(e)}")
         return False
 
-def validate_environment():
-    """Validate that all required environment variables are set"""
-    required_vars = ["BOT_TOKEN"]
-    missing_vars = []
-    for var in required_vars:
-        if not os.getenv(var):
-            missing_vars.append(var)
-    if missing_vars:
-        raise ValueError(f"Missing required environment variables: {',  '.join(missing_vars)}")
-    return True
+def format_file_size(bytes: int) -> str:
+    """Convert bytes to human-readable format."""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if bytes < 1024.0:
+            return f"{bytes:.2f} {unit}"
+        bytes /= 1024.0
+    return f"{bytes:.2f} TB"
+
+def sanitize_filename(filename: str) -> str:
+    """Make filenames safe for storage."""
+    keepchars = (' ', '.', '_', '-')
+    return "".join(
+        c for c in filename 
+        if c.isalnum() or c in keepchars
+    ).rstrip()
+
+def ensure_download_dir() -> Path:
+    """Ensure download directory exists with proper permissions."""
+    path = Path(Config.DOWNLOAD_DIR)
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        # Set permissions (rwx for owner, rx for others)
+        path.chmod(0o755)
+        return path
+    except Exception as e:
+        logger.critical(f"Failed to create download directory: {str(e)}")
+        raise
