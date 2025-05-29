@@ -1,7 +1,7 @@
 import os
 import yt_dlp
 import logging
-from config import YT_DLP_OPTIONS, MAX_FILE_SIZE, DOWNLOAD_DIR
+from config import Config
 from utils import cleanup_file, format_file_size, sanitize_filename, ensure_download_dir
 from typing import Tuple
 
