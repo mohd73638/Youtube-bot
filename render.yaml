@@ -10,7 +10,10 @@ services:
     envVars:
       - key: TELEGRAM_BOT_TOKEN
       - key: WEBHOOK_URL
+        value: https://youtube-bot-3-1g9w.onrender.com
       - key: CHANNEL_USERNAME
         value: "atheraber"
       - key: SESSION_SECRET
         value: ${{SESSION_SECRET}}  # For Flask sessions
+      - key: WEBHOOK_PATH
+        value: "/webhook/telegram"
