@@ -13,7 +13,17 @@ logger = logging.getLogger(__name__)
 CHANNEL_USERNAME = os.environ.get("CHANNEL_USERNAME", "@atheraber").lstrip("@")
 
 class TelegramBot:
+    _instance = None  # Singleton control
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False  # First-time init flag
+        return cls._instance
+
     def __init__(self):
+        if self._initialized:  # Skip if already initialized
+            return
         self.token = os.environ.get("TELEGRAM_BOT_TOKEN")
         if not self.token:
             logger.error("TELEGRAM_BOT_TOKEN environment variable not set")
@@ -24,7 +34,7 @@ class TelegramBot:
         self.github_analyzer = GitHubAnalyzer()
         self.running = False
         self.setup_handlers()
-        self._initialized = False
+        self._initialized = True
         self.downliloader = VideoDownloader()
         self.MAX_VIDEO_SIZE = 50 * 1024 * 1024 
     
@@ -355,35 +365,12 @@ parse_mode="markdown"
 )
 
     async def process_update(self, update_data):
-        """Process webhook update from Telegram (async-safe)"""
+        """Process updates without reinitializing the bot"""
         try:
-        # Ensure application exists
-            if not hasattr(self, 'application'):
-                self.application = Application.builder().token(self.token).build()
-                self.setup_handlers()
-            
-        # Initialize if not already done
-            if not getattr(self, '_initialized', False):
-                await self.application.initialize()
-                await self.application.start()
-            
-            # Only setup webhook if using webhook mode
-                if hasattr(self.application, 'updater') and self.application.updater:
-                    await self.application.updater.start_webhook(
-                        listen="0.0.0.0",
-                        port=8000,
-                        url_path=self.token,
-                        webhook_url=f"{Config.WEBHOOK_URL}/webhook"
-                    )
-            
-            self._initialized = True
-            
-        # Process the update
             update = Update.de_json(update_data, self.bot)
-            await self.application.process_update(update)
-        
+            await self.application.process_update(update)  # No startup() call here
         except Exception as e:
-            logger.error(f"Error processing update: {str(e)}", exc_info=True)
+            logger.error(f"Update error: {e}")
             raise
 
 # --- FastAPI Webserver for Webhook-only Deployment ---
@@ -393,7 +380,13 @@ telegram_bot = TelegramBot()
 
 @webserver.on_event("startup")
 async def on_startup():
-    await telegram_bot.startup()
+    if not telegram_bot.running:
+        await telegram_bot.startup()  # Starts only if not running
+
+@webserver.on_event("shutdown")
+async def on_shutdown():
+    if telegram_bot.running:
+        await telegram_bot.application.shutdown()
 
 @webserver.post("/webhook")
 async def telegram_webhook(request: Request):
