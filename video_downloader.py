@@ -11,7 +11,7 @@ from config import Config
     Config.validate()  # Ensure config is loaded
   
 class VideoDownloader:
-      def __init__(self):
+def __init__(self):
           self.options = Config.YT_DLP_OPTIONS
 
     @staticmethod
