@@ -150,3 +150,12 @@ class YouTubeBot:
 
 if __name__ == "__main__":
     YouTubeBot().run()
+
+if __name__ == "__main__":
+    import sys
+    if "--webhook" in sys.argv:
+        from fastapi import FastAPI
+        app = FastAPI()
+        # ... (FastAPI setup)
+    else:
+        YouTubeBot().run()  # Standard polling
