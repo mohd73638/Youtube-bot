@@ -15,6 +15,14 @@ from telegram.ext import (
 from fastapi import FastAPI, Request
 from telegram import Update
 
+from fastapi import FastAPI
+
+webserver = FastAPI()
+
+@webserver.get("/")
+def read_root():
+    return {"message": "Hello World"}
+
 webservice = FastAPI()
 
 def set_webhook():
