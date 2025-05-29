@@ -23,15 +23,13 @@ webserver = FastAPI()
 def read_root():
     return {"message": "Hello World"}
 
-def set_webhook():
-    """Run once during deployment to set webhook URL"""
-    from config import Config
-    import requests
-    requests.post(
-        f"https://api.telegram.org/bot{Config.TELEGRAM_BOT_TOKEN}/setWebhook",
-        json={"url": f"{Config.WEBHOOK_URL}/webhook/telegram"}
-    )
-
+@webserver.post("/webhook/telegram")
+async def telegram_webhook(request: Request):
+    """Handle Telegram updates"""
+    update = Update.de_json(await request.json(), bot)
+    await YouTubeBot().process_update(update)
+    return {"status": "ok"}
+    
 # Add to bot.py
 def set_webhook():
     import requests
@@ -43,12 +41,6 @@ def set_webhook():
     )
     logger.info(f"Webhook set to: {url} | Status: {response.status_code}")
 
-@webserver.post("/webhook/telegram")
-async def telegram_webhook(request: Request):
-    """Handle Telegram updates"""
-    update = Update.de_json(await request.json(), bot)
-    await YouTubeBot().process_update(update)
-    return {"status": "ok"}
 
 # Keep your existing YouTubeBot class
 
