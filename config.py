@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from config import Config
 class Config:
     """Configuration class for the bot with Render.com optimizations"""
     
