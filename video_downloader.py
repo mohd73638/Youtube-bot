@@ -7,7 +7,13 @@ from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
+from config import Config
+  Config.validate()  # Ensure config is loaded
+  
 class VideoDownloader:
+      def __init__(self):
+          self.options = Config.YT_DLP_OPTIONS
+
     @staticmethod
     def get_video_info(url: str) -> dict:
         """Get video metadata without downloading"""
