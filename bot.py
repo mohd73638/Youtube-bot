@@ -23,6 +23,10 @@ webserver = FastAPI()
 def read_root():
     return {"message": "Hello World"}
 
+@webserver.head("/")
+def head_root():
+    return {}
+
 @webserver.post("/webhook/telegram")
 async def telegram_webhook(request: Request):
     """Handle Telegram updates"""
