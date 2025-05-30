@@ -63,12 +63,12 @@ def cleanup_file(file_path: str):
 def is_supported_url(url: str) -> bool:
     """Check if URL is from supported platforms"""
     domains = [
-         youtube.com ,
-         youtu.be ,
-         tiktok.com ,
-         instagram.com ,
-         facebook.com ,
-         fb.watch 
+        " youtube.com" ,
+       "  youtu.be ",
+        " tiktok.com ",
+        " instagram.com ",
+        " facebook.com ",
+       "  fb.watch "
     ]
     return any(d in url.lower() for d in domains)
 
