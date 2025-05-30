@@ -139,6 +139,18 @@ class VideoDownloader:
         except Exception as e:
             return None, f"Unexpected Pytube Error: {str(e)[:100]}"
 
+import re
+from urllib.parse import urlparse, parse_qs
+
+    def normalize_facebook_url(url: str) -> str:
+        if "facebook.com/share/v/" in url:
+            match = re.search(r' /share/v/([^/?]+) , url)'
+            if match:
+                video_id = match.group(1) 
+            return f"https://www.facebook.com/watch?v={video_id}"
+        return url
+
+    
     @staticmethod
     def _download_facebook(url: str, retries: int = 2) -> Tuple[Optional[str], Optional[str]]:
         """Facebook video downloader with retry support."""
@@ -203,7 +215,10 @@ class VideoDownloader:
                         if result[0]:
                             return result
 
-                elif "facebook.com" in url or "fb.watch" in url:
+               
+
+                elif "facebook.com" in url or "fb.watch" in url or "m.facebook.com/share/v/" in url:
+                    url = normalize_facebook_url(url)  # 👈 fix redirect share URLs
                     result = VideoDownloader._download_facebook(url)
                     if result[0]:
                         return result
