@@ -18,4 +18,4 @@ services:
       - key: WEBHOOK_PATH
         value: "/webhook/telegram"
       - key: WEBHOOK_URL
-        value: 
+        value: f"https://t.me/{CHANNEL_USERNAME}"
