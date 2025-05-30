@@ -16,6 +16,8 @@ from config import Config
 from utils import get_domain # Assuming get_domain is in utils_updated.py
 
 logger = logging.getLogger(__name__)
+YOUTUBE_COOKIES = "youtube_cookies.txt"
+FACEBOOK_COOKIES = "facebook_cookies.txt"
 
 class VideoDownloader:
     """Enhanced downloader with yt-dlp and pytube fallback for YouTube."""
@@ -26,7 +28,7 @@ class VideoDownloader:
             ydl_opts = {
                 'format': 'bestvideo[height<=720]+bestaudio/best[height<=720]',
                 'outtmpl': str(Config.TEMP_DIR / '%(id)s.%(ext)s'),
-                'cookiefile': Config.COOKIE_FILE,
+                'cookiefile': Config.YOUTUBE_COOKIES,
                 'ignoreerrors': True,
                 'quiet': True,
                 'force_ipv4': True,
