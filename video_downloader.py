@@ -141,7 +141,6 @@ class VideoDownloader:
 
 import re
 from urllib.parse import urlparse, parse_qs
-
     def normalize_facebook_url(url: str) -> str:
         if "facebook.com/share/v/" in url:
             match = re.search(r' /share/v/([^/?]+) , url)'
