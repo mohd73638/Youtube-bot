@@ -57,6 +57,10 @@ class YouTubeBot:
         else:
             logger.warning("PTB handlers seem to be already registered. Skipping registration.")
 
+    async def _handle_url(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        text = update.message.text
+        await update.message.reply_text(f"You sent a URL: {text}")
+    
     async def _check_subscription(self, user_id: int) -> bool:
         """Check if user is subscribed to the channel"""
         if not Config.CHANNEL_USERNAME:
