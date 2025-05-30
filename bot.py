@@ -52,7 +52,7 @@ class YouTubeBot:
             self.app.add_handler(CommandHandler("help", self._help))
             self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message))
             self.app.add_handler(CallbackQueryHandler(self._verify_subscription, pattern="^verify_sub$"))
-            self.app.add_handler(MessageHandler(filters.TEXT & _filters.Entity("url"), self._handle_url))
+            self.app.add_handler(MessageHandler(filters.TEXT & ~filters.Entity("url"), self._handle_url))
             logger.info("PTB handlers registered.")
         else:
             logger.warning("PTB handlers seem to be already registered. Skipping registration.")
