@@ -157,17 +157,24 @@ class VideoDownloader:
 
     @staticmethod
     def _is_youtube_url(url: str) -> bool:
-        """Safe YouTube URL checker (add to your class)."""
+        """Check if URL is from any YouTube domain."""
         from urllib.parse import urlparse
         domain = urlparse(url).netloc.lower()
-        return any(
-            domain.endswith(d) 
-            for d in [".youtube.com", ".youtu.be"]
-        )
+        return any(domain.endswith(d) for d in [".youtube.com", ".youtu.be", ".youtube-nocookie.com"])
 
     @staticmethod
-    def _combine_errors(primary_err: str, fallback_err: str) -> str:
-        """Clean error formatting (add to your class)."""
+    def _cleanup_file(file_path: Optional[str]): 
+        """Delete partially downloaded files on failure."""
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path) 
+                logger.info(f"Cleaned up file: {file_path}")
+            except Exception as e:
+                logger.error(f"Failed to cleanup {file_path}: {e}")
+
+    @staticmethod
+    def _format_errors(primary_err: str, fallback_err: str) -> str:
+        """Combine errors without duplicates."""
         if not fallback_err or fallback_err == primary_err:
-            return primary_err 
-        return f"Primary error: {primary_err} | Fallback: {fallback_err}"
+            return primary_err
+        return f"yt-dlp: {primary_err} | pytube: {fallback_err}"
