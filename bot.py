@@ -167,7 +167,7 @@ class YouTubeBot:
                 )
                 await msg.delete()
             else:
-                await msg.edit_text(f"❌ Download failed: {result or  Unknown error }")
+                await msg.edit_text(f"❌ Download failed: {result or ' Unknown error' }")
 
         except Exception as e:
             logger.error(f"Download error: {str(e)}", exc_info=True)
