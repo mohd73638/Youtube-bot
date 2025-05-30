@@ -1,3 +1,5 @@
+import re
+from urllib.parse import urlparse, parse_qs
 import yt_dlp
 import logging
 from typing import Tuple, Optional, List
@@ -139,8 +141,7 @@ class VideoDownloader:
         except Exception as e:
             return None, f"Unexpected Pytube Error: {str(e)[:100]}"
 
-import re
-from urllib.parse import urlparse, parse_qs
+    @staticmethod
     def normalize_facebook_url(url: str) -> str:
         if "facebook.com/share/v/" in url:
             match = re.search(r' /share/v/([^/?]+) , url)'
