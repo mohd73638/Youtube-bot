@@ -137,57 +137,48 @@ class YouTubeBot:
             await update.message.reply_text("❌ Unsupported link. Please send a valid link from YouTube, TikTok, or Instagram.")
             return
 
+
         msg = None
         file_path = None
         try:
             msg = await update.message.reply_text("⏳ Downloading video... Please wait.")
-            logger.info(f"User {user.id} requested download for: {url}")
+            logger.info(f"Download started for: {url}")
 
-            # --- FIX: Revert to run_in_executor for the synchronous download function --- 
+        # Run synchronous download in executor
             loop = asyncio.get_running_loop()
-            # Use functools.partial to pass arguments to the function run in the executor
-            # Assuming self.downloader.download_video is SYNCHRONOUS
-            download_func = partial(self.downloader.download_video, url)
-            # Await the result from the executor
-            file_path, title = await loop.run_in_executor(None, download_func)
-            # ---------------------------------------------------------------------------
+            file_path, result = await loop.run_in_executor(
+                None, 
+                lambda: self.downloader.download_video(url)
+            )
 
             if file_path:
-                logger.info(f"Download successful for {url}. Sending video: {file_path}")
+            # Check file size before sending
+                file_size = os.path.getsize(file_path)
+                if file_size > 50 * 1024 * 1024:  # 50MB limit
+                    await msg.edit_text("❌ Video exceeds 50MB size limit")
+                    return
+
                 await update.message.reply_video(
-                    video=open(file_path, "rb"),
-                    caption=f"🎥 {title}",
+                    video=open(file_path,  rb ),
+                    caption=result[:1024],  # Telegram caption limit
                     supports_streaming=True,
+                    width=1280,
+                    height=720
                 )
                 await msg.delete()
-                logger.info(f"Successfully sent video for {url}")
             else:
-                logger.warning(f"Download function returned no file path for {url}. It might be unavailable or failed.")
-                if msg:
-                    # Provide a more informative message based on potential yt-dlp failure
-                    await msg.edit_text("❌ Download failed. Could not retrieve the video file. The link might be invalid, private, too large, or unavailable.")
+                await msg.edit_text(f"❌ Download failed: {result or  Unknown error }")
 
         except Exception as e:
-            # Catch potential errors during download or sending
-            logger.error(f"Error handling message for {url}: {e}", exc_info=True)
-            # Check if the error is the specific TypeError we were trying to fix
-            if isinstance(e, TypeError) and "can't be used in 'await' expression" in str(e):
-                 error_message = "⚠️ An error occurred during download. It seems there's still an issue with how the download function is called. Please report this."
-            else:
-                error_message = f"⚠️ An error occurred: {str(e)[:200]}"
+            logger.error(f"Download error: {str(e)}", exc_info=True)
+            error_msg = f"⚠️ Error: {str(e)[:200]}"
             if msg:
-                try:
-                    await msg.edit_text(error_message)
-                except Exception as edit_err:
-                    logger.error(f"Failed to edit message on error: {edit_err}")
-                    await update.message.reply_text(error_message)
+                await msg.edit_text(error_msg)
             else:
-                await update.message.reply_text(error_message)
-        finally:
-            if file_path:
+                await update.message.reply_text(error_msg)
+        finally: 
+            if file_path and os.path.exists(file_path):
                 cleanup_file(file_path)
-                logger.info(f"Cleaned up file: {file_path}")
-
 # --- FastAPI Lifespan & Webhook Setup ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
