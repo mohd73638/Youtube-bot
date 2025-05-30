@@ -46,33 +46,31 @@ def get_domain(url: str) -> Optional[str]:
         logger.error(f"Error parsing domain from URL 	'{url}	': {e}")
         return None
 
-def is_supported_url(url: str) -> bool:
-    """Check if the URL's domain is in our supported list."""
-    domain = get_domain(url)
-    if domain:
-        # Check if the extracted domain or a known variation exists in SUPPORTED_DOMAINS
-        return any(supported_domain in domain for supported_domain in SUPPORTED_DOMAINS)
-    return False
 
-def cleanup_file(path: str) -> bool:
-    """Safe file deletion using send2trash (or direct delete for temp)."""
-    # Ensure Config.TEMP_DIR is accessible or handle the path comparison differently
-    # For simplicity, we'll assume path comparison works or remove it.
-    # Let's default to send2trash for safety unless path is clearly temporary.
+def cleanup_file(file_path: str):
+    """Safely remove downloaded files"""
     try:
-        path_obj = Path(path)
-        if path_obj.exists():
-            # Basic check if it's likely a temp file based on name pattern (less reliable)
-            # A better approach would be passing the temp dir path to this function.
-            # if "temp" in str(path_obj.parent).lower() or path_obj.name.startswith("tmp"):
-            #    path_obj.unlink() # Immediate delete for likely temp files
-            # else:
-            send2trash(str(path_obj)) # Safer default
-            logger.info(f"Moved to trash: {path}")
-        return True
+        if file_path and os.path.exists(file_path):
+            os.unlink(file_path)
+            # Clean any related temporary files
+            base_name = Path(file_path).stem
+            for f in Path(file_path).parent.glob(f"{base_name}*"):
+                if f != file_path:
+                    os.unlink(f)
     except Exception as e:
-        logger.error(f"Cleanup failed for 	'{path}	': {e}")
-        return False
+        logging.warning(f"Cleanup failed for {file_path}: {e}")
+
+def is_supported_url(url: str) -> bool:
+    """Check if URL is from supported platforms"""
+    domains = [
+         youtube.com ,
+         youtu.be ,
+         tiktok.com ,
+         instagram.com ,
+         facebook.com ,
+         fb.watch 
+    ]
+    return any(d in url.lower() for d in domains)
 
 # Example of how Config might be used if imported
 # class Config:
