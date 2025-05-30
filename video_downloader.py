@@ -132,28 +132,35 @@ class VideoDownloader:
             return None, f"Unexpected Pytube Error: {str(e)[:100]}"
 
     @staticmethod
-    def download_video(url: str) -> Tuple[Optional[str], Optional[str]]:
-        """Main download function trying yt-dlp first, then pytube for YouTube."""
-        file_path, title_or_error = VideoDownloader._download_with_yt_dlp(url)
-
-        # If yt-dlp fails and it's a YouTube link, try pytube
-        if file_path is None and get_domain(url) in ["youtube.com", "youtu.be"]:
-            logger.warning(f"yt-dlp failed for YouTube URL ({url}). Trying pytube fallback...")
-            # Keep the original error message from yt-dlp unless pytube succeeds or gives a different error
-            pytube_file_path, pytube_title_or_error = VideoDownloader._download_with_pytube(url)
-            if pytube_file_path:
-                return pytube_file_path, pytube_title_or_error # Pytube succeeded
-            else:
-                # Pytube also failed, return its error message if it's different/more specific
-                if pytube_title_or_error and pytube_title_or_error != title_or_error:
-                     return None, pytube_title_or_error
-                else:
-                     # Return the original yt-dlp error if pytube didn't add info
-                     return None, title_or_error 
+    def download_video(url: str, max_retries: int = 2) -> Tuple[Optional[str], Optional[str]]:
+        """Download with retries, fallback, and proper cleanup."""
+        last_error = None
+    
+        for attempt in range(max_retries):
+            # Try yt-dlp first
+            file_path, error = VideoDownloader._download_with_yt_dlp(url)
         
-        # Return yt-dlp result (success or failure for non-YouTube URLs)
-        return file_path, title_or_error
-
+            if file_path:
+                return file_path, error  # Success!
+        
+            # Fallback to pytube for YouTube
+            if VideoDownloader._is_youtube_url(url):
+                logger.warning(f"Attempt {attempt + 1}: yt-dlp failed, trying pytube...")
+                pt_path, pt_error = VideoDownloader._download_with_pytube(url)
+            
+                if pt_path:
+                    return pt_path, pt_error  # Pytube success
+            
+                # Combine errors if both failed
+                last_error = VideoDownloader._format_errors(error, pt_error)
+                VideoDownloader._cleanup_file(pt_path)  # Cleanup partial pytube downloads
+            else:
+                last_error = error
+        
+            logger.warning(f"Attempt {attempt + 1} failed: {last_error}")
+            time.sleep(2 ** attempt)  # Exponential backoff
+    
+        return None, last_error  # All retries failed
 
     @staticmethod
     def _is_youtube_url(url: str) -> bool:
