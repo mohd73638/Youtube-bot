@@ -17,75 +17,24 @@ class VideoDownloader:
 
     @staticmethod
     def _download_with_yt_dlp(url: str) -> Tuple[Optional[str], Optional[str]]:
-        """Attempt download using yt-dlp with optimized options."""
         try:
-            # More robust options: prefer mp4, limit filesize, handle cookies if needed
             ydl_opts = {
-                # Prefer mp4 format, fallback to best video + best audio
-                # Use 'bv*+ba' for potentially better quality but separate files initially
-                # Using 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best' is common
-                # Simpler: 'best[ext=mp4][filesize<50M]/best[filesize<50M]'
-                "format": f"bestvideo[ext=mp4][filesize<?{Config.MAX_FILE_SIZE}]+bestaudio[ext=m4a]/best[ext=mp4][filesize<?{Config.MAX_FILE_SIZE}]/best[filesize<?{Config.MAX_FILE_SIZE}]",
-                "outtmpl": str(Config.TEMP_DIR / "%(id)s_%(epoch)s.%(ext)s"), # Use epoch for uniqueness
-                "max_filesize": Config.MAX_FILE_SIZE,
+                "format": f"best[filesize<{Config.MAX_FILE_SIZE}]",
+                "outtmpl": str(Config.TEMP_DIR / "%(id)s.%(ext)s"),
                 "quiet": True,
-                "no_warnings": True,
-                "logger": logger,
-                "noprogress": True,
-                "noplaylist": True, # Download single video even if part of playlist
-                # Consider adding cookiefile if login is needed for some sites
-                # "cookiefile": "path/to/cookies.txt", 
-                # Force IPv4 if IPv6 causes issues
-                # "source_address": "0.0.0.0", 
+                "cookiefile": "cookies.txt" if os.path.exists("cookies.txt") else None,
+                "noplaylist": True,
             }
-            logger.info(f"Attempting download with yt-dlp for: {url}")
+        
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                # Use download=False first to check info without downloading immediately
-                info = ydl.extract_info(url, download=False)
-                
-                # Check if filesize is available and within limits before download
-                filesize = info.get("filesize") or info.get("filesize_approx")
-                if filesize and filesize > Config.MAX_FILE_SIZE:
-                    logger.warning(f"Video filesize ({filesize}) exceeds limit ({Config.MAX_FILE_SIZE}) for {url}")
-                    # Optionally, try to find a smaller format if needed, but format selection handles this
-                    # return None, f"Video too large (>{Config.MAX_FILE_SIZE // 1024 // 1024}MB)"
-                    # Let format selection handle it, but log the warning
-
-                # Proceed with download using the selected format
-                logger.info(f"Starting yt-dlp download for {url}")
-                ydl.download([url])
-                # Construct filename based on template and info
-                # Note: ydl.prepare_filename might not work as expected after download=True
-                # We need to find the actual downloaded file based on the template pattern
-                downloaded_file = None
-                for filename in os.listdir(Config.TEMP_DIR):
-                     # Match based on video ID and epoch timestamp in the filename template
-                     if info.get("id") in filename and str(info.get("epoch")) in filename:
-                          downloaded_file = str(Config.TEMP_DIR / filename)
-                          break
-                
-                if downloaded_file:
-                    logger.info(f"yt-dlp download successful: {downloaded_file}")
-                    return downloaded_file, info.get("title", "video")[:200]
-                else:
-                    logger.error(f"yt-dlp downloaded but file not found for {url}. Template: {ydl_opts['outtmpl']}")
-                    return None, "Download completed but file not found."
-
+                info = ydl.extract_info(url, download=True)
+                filename = ydl.prepare_filename(info)
+                return filename, info.get('title', 'video')
+            
         except yt_dlp.utils.DownloadError as e:
-            # Log specific yt-dlp errors
-            error_msg = str(e)
-            logger.warning(f"yt-dlp download failed for {url}: {error_msg}")
-            # Return specific error messages for common issues if possible
-            if "Video unavailable" in error_msg or "Private video" in error_msg:
-                return None, "Video unavailable or private."
-            if "age restricted" in error_msg.lower():
-                return None, "Video is age-restricted."
-            # Generic yt-dlp error
-            return None, f"yt-dlp Error: {error_msg[:100]}"
+            return None, f"yt-dlp: {str(e)}"
         except Exception as e:
-            logger.error(f"Unexpected error during yt-dlp download for {url}: {e}", exc_info=True)
-            return None, f"Unexpected yt-dlp Error: {str(e)[:100]}"
-
+            return None, f"Unexpected error: {str(e)}"
     @staticmethod
     def _download_with_pytube(url: str) -> Tuple[Optional[str], Optional[str]]:
         """Attempt YouTube download using pytube as a fallback."""
