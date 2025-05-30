@@ -5,7 +5,12 @@ from pytube import YouTube
 from pytube.exceptions import PytubeError
 import time
 import os
+import subprocess
+from pathlib import Path
+import random
 
+# تحديث yt-dlp تلقائيًا عند التشغيل
+subprocess.run(["yt-dlp", "-U"], check=False)
 # Assuming Config and get_domain are available
 from config import Config
 from utils import get_domain # Assuming get_domain is in utils_updated.py
