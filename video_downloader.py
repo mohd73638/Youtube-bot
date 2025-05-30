@@ -183,43 +183,46 @@ class VideoDownloader:
         
         return None, last_error or "Facebook download failed"
 
+     
     @staticmethod
     def download_video(url: str, max_retries: int = 2) -> Tuple[Optional[str], Optional[str]]:
         """Main download method with retry logic."""
         VideoDownloader.initialize()
         last_error = None
-        
+
         for attempt in range(max_retries):
             try:
                 if "youtube.com" in url or "youtu.be" in url:
                     result = VideoDownloader._download_with_yt_dlp(url)
                     if result[0]:
                         return result
-                    
-                    # Fallback to pytube on last attempt
+
                     if attempt == max_retries - 1:
                         logger.warning("Falling back to pytube")
                         result = VideoDownloader._download_with_pytube(url)
                         if result[0]:
                             return result
-                
+
                 elif "facebook.com" in url or "fb.watch" in url:
                     result = VideoDownloader._download_facebook(url)
                     if result[0]:
                         return result
-                
+
+                elif "instagram.com" in url:
+                    return None, "❌ Instagram is no longer supported by yt-dlp."
+
                 else:
-                    return None, "Unsupported website"
-                    
+                    return None, "❌ Unsupported website"
+
             except Exception as e:
                 last_error = str(e)
                 logger.error(f"Attempt {attempt+1} failed: {last_error}")
-                time.sleep(2 ** attempt)  # Exponential backoff
-            
-            # Cleanup between attempts
-            VideoDownloader.cleanup_old_files(days=0)  # Clean today's failed downloads
-        
+                time.sleep(2 ** attempt)
+
+            VideoDownloader.cleanup_old_files(days=0)
+
         return None, last_error or "All download attempts failed"
+    
 
     @staticmethod
     def _cleanup_file(file_path: Optional[str]):
