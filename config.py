@@ -26,8 +26,8 @@ class Config:
     
     # Download settings
     MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
-    COOKIE_FILE = "cookies.txt" 
-
+    YOUTUBE_COOKIES = "youtube_cookies.txt"
+    FACEBOOK_COOKIES = "facebook_cookies.txt"
     
     @classmethod
     def validate(cls):
