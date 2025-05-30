@@ -8,6 +8,8 @@ import os
 import asyncio
 from contextlib import asynccontextmanager
 from functools import partial # Keep partial for run_in_executor
+from pathlib import Path
+Path("downloads").mkdir(exist_ok=True)
 
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
