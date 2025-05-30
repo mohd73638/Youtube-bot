@@ -52,6 +52,7 @@ class YouTubeBot:
             self.app.add_handler(CommandHandler("help", self._help))
             self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_message))
             self.app.add_handler(CallbackQueryHandler(self._verify_subscription, pattern="^verify_sub$"))
+            self.app.add_handler(MessageHandler(filters.TEXT & _filters.Entity("url"), self._handle_url))
             logger.info("PTB handlers registered.")
         else:
             logger.warning("PTB handlers seem to be already registered. Skipping registration.")
@@ -179,6 +180,23 @@ class YouTubeBot:
         finally: 
             if file_path and os.path.exists(file_path):
                 cleanup_file(file_path)
+
+
+async def handle_url(update, context):
+    url = update.message.text
+    await update.message.reply_text(f"Got your URL: {url}")
+
+async def error_handler(update, context: ContextTypes.DEFAULT_TYPE):
+    logging.error("Exception while handling update:", exc_info=context.error)
+
+
+
+def run(self):
+    self._register_handlers()
+    self.app.run_polling()
+
+
+
 # --- FastAPI Lifespan & Webhook Setup ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -260,7 +278,10 @@ if __name__ == "__main__":
         else:
             logger.error("Webhook setup command failed.")
         sys.exit(0)
-
+        
+        bot = YourBotClass()
+        bot.run()
+  
     logger.info("This script is intended to be run via a web server like Uvicorn.")
     logger.info("Example: uvicorn bot:webserver --host 0.0.0.0 --port $PORT")
 
