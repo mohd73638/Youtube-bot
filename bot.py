@@ -182,9 +182,9 @@ class YouTubeBot:
                 cleanup_file(file_path)
 
 
-async def handle_url(update, context):
-    url = update.message.text
-    await update.message.reply_text(f"Got your URL: {url}")
+async def _handle_url(self, update, context):
+    text = update.message.text
+    await update.message.reply_text(f"You sent a URL: {text}")
 
 async def error_handler(update, context: ContextTypes.DEFAULT_TYPE):
     logging.error("Exception while handling update:", exc_info=context.error)
