@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: youtube-bot # Or your preferred service name
+    env: python
+    plan: free # Or your desired plan
+    # Region can be specified, e.g., region: frankfurt
+    buildCommand: |
+      pip install --upgrade pip && pip install -r requirements.txt
+      # Attempt to set webhook during build. Monitor logs on first deploy.
+      # Ensure TELEGRAM_BOT_TOKEN and RENDER_EXTERNAL_URL are available as secrets/env vars.
+      python -c "from bot import set_webhook_sync; set_webhook_sync()"
+    startCommand: "uvicorn bot:webserver --host 0.0.0.0 --port $PORT --workers 1"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11 # Specify Python version used during development
+      - key: TELEGRAM_BOT_TOKEN
+        fromSecret: true # Load from Render secrets
+      - key: APP_URL
+        fromService: # Use Render's automatically generated URL
+          type: web
+          name: youtube-bot # Must match the service name above
+          property: url
+      - key: CHANNEL_USERNAME
+        value: "atheraber" # Your channel username without @
+      - key: WEBHOOK_PATH # Path component for the webhook
+        value: "/webhook/telegram"
+      # WEBHOOK_URL is now constructed dynamically in config.py using APP_URL and WEBHOOK_PATH
+      # Remove the static WEBHOOK_URL definition from here
+
