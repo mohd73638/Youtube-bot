@@ -9,7 +9,7 @@ services:
     startCommand: "uvicorn app:app --host 0.0.0.0 --port 10000"
     envVars:
       - key: TELEGRAM_BOT_TOKEN
-      - key: WEBHOOK_URL
+      - key: APP_URL
         value: https://youtube-bot-3-1g9w.onrender.com
       - key: CHANNEL_USERNAME
         value: "atheraber"
@@ -17,3 +17,5 @@ services:
         value: ${{SESSION_SECRET}}  # For Flask sessions
       - key: WEBHOOK_PATH
         value: "/webhook/telegram"
+      - key: WEBHOOK_URL
+        value: 
