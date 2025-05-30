@@ -144,7 +144,7 @@ class VideoDownloader:
     @staticmethod
     def normalize_facebook_url(url: str) -> str:
         if "facebook.com/share/v/" in url:
-            match = re.search(r'/share/v/([^/?]+)', url)'
+            match = re.search(r"/share/v/([^/?]+)", url)
             if match:
                 video_id = match.group(1) 
             return f"https://www.facebook.com/watch?v={video_id}"
