@@ -1,5 +1,5 @@
 python-telegram-bot==20.7
-yt-dlp==2024.04.09
+yt-dlp>=2024.04.09
 python-dotenv==1.0.0
 send2trash==1.8.2
 uvicorn==0.29.0
