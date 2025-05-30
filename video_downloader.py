@@ -90,6 +90,25 @@ class VideoDownloader:
             logger.error(f"Unexpected error during pytube download for {url}: {e}", exc_info=True)
             return None, f"Unexpected Pytube Error: {str(e)[:100]}"
 
+     @staticmethod
+    def _download_facebook(url: str) -> Tuple[Optional[str], Optional[str]]:
+        try:
+            ydl_opts = {
+                'format': 'best',
+                'outtmpl': str(Config.TEMP_DIR / '%(id)s.%(ext)s'),
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Linux; Android 10)'
+                },
+                'force_ipv4': True,
+            }
+        
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=True)
+                filename = ydl.prepare_filename(info)
+                return filename, info.get('title', 'video')
+        except Exception as e:
+            return None, f"Facebook error: {str(e)}"
+    
     @staticmethod
     def download_video(url: str, max_retries: int = 2) -> Tuple[Optional[str], Optional[str]]:
         """Download with retries, fallback, and proper cleanup."""
