@@ -1,12 +1,8 @@
 python-telegram-bot==20.7
-yt-dlp==2023.11.16
+yt-dlp==2024.6.22
 python-dotenv==1.0.0
 send2trash==1.8.2
-uvicorn
-fastapi
-webserver
-Flask==3.0.0
+uvicorn==0.29.0
+fastapi==0.109.2
 gunicorn==23.0.0
-PyGithub==2.6.1
 requests==2.32.3
-Werkzeug==3.0.1
