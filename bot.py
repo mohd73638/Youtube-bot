@@ -148,7 +148,17 @@ async def telegram_webhook(request: Request):
     """Handle Telegram updates via webhook"""
     try:
         update_data = await request.json()
+        print("Raw update:", update_data)
+        if not update_data.get("messege", {}).get("from", {}).get("is_bot"):
+            update_data["messege"]["from"]["is_bot"] = False
+        
         update = Update.de_json(update_data, bot_application.bot)
+        await bot_application.process_update(update)
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Webhook processing failed: {stre(e)}")
+        return {"status": "error"}, 500
+
         
         if not bot_application.running:
             await bot_application.initialize()
