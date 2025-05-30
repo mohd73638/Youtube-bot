@@ -120,7 +120,7 @@ class VideoDownloader:
         # تحديد نوع الرابط
         if "youtube.com" in url or "youtu.be" in url:
             return VideoDownloader._download_with_yt_dlp(url)
-        elif "facebook.com" in url:
+        elif "facebook.com" in url or "fb.watch" in url:
             return VideoDownloader._download_facebook(url)
         else:
             return None, "Unsupported website"
