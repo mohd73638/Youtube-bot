@@ -154,3 +154,20 @@ class VideoDownloader:
         # Return yt-dlp result (success or failure for non-YouTube URLs)
         return file_path, title_or_error
 
+
+    @staticmethod
+    def _is_youtube_url(url: str) -> bool:
+        """Safe YouTube URL checker (add to your class)."""
+        from urllib.parse import urlparse
+        domain = urlparse(url).netloc.lower()
+        return any(
+            domain.endswith(d) 
+            for d in [".youtube.com", ".youtu.be"]
+        )
+
+    @staticmethod
+    def _combine_errors(primary_err: str, fallback_err: str) -> str:
+        """Clean error formatting (add to your class)."""
+        if not fallback_err or fallback_err == primary_err:
+            return primary_err 
+        return f"Primary error: {primary_err} | Fallback: {fallback_err}"
