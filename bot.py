@@ -1,5 +1,6 @@
 import logging
 import sys
+from contextlib import asynccontextmanager
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
     Application,
@@ -9,7 +10,8 @@ from telegram.ext import (
     ContextTypes,
     filters
 )
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
 from config import Config
 from video_downloader import VideoDownloader
 from utils import is_supported_url, cleanup_file
@@ -21,8 +23,21 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Global FastAPI and PTB instances
-webserver = FastAPI()
+# Application lifespan management
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await bot_application.initialize()
+    await bot_application.start()
+    logger.info("Bot initialized")
+    yield
+    # Shutdown
+    await bot_application.shutdown()
+    await bot_application.stop()
+    logger.info("Bot stopped")
+
+# Initialize FastAPI and PTB Application
+webserver = FastAPI(lifespan=lifespan)
 bot_application = Application.builder().token(Config.TELEGRAM_BOT_TOKEN).build()
 
 class YouTubeBot:
@@ -131,10 +146,24 @@ def read_root():
 @webserver.post(Config.WEBHOOK_PATH)
 async def telegram_webhook(request: Request):
     """Handle Telegram updates via webhook"""
-    update_data = await request.json()
-    update = Update.de_json(update_data, bot_application.bot)
-    await bot_application.process_update(update)
-    return {"status": "ok"}
+    try:
+        update_data = await request.json()
+        update = Update.de_json(update_data, bot_application.bot)
+        
+        if not bot_application.running:
+            await bot_application.initialize()
+            
+        await bot_application.process_update(update)
+        return JSONResponse(
+            content={"status": "ok"},
+            status_code=status.HTTP_200_OK
+        )
+    except Exception as e:
+        logger.error(f"Webhook error: {e}")
+        return JSONResponse(
+            content={"status": "error", "detail": str(e)},
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 def set_webhook():
     """Register the webhook with Telegram"""
@@ -153,7 +182,12 @@ if __name__ == "__main__":
         # Webhook mode (for Render)
         set_webhook()
         import uvicorn
-        uvicorn.run(webserver, host="0.0.0.0", port=8000)
+        uvicorn.run(
+            "bot:webserver",
+            host="0.0.0.0",
+            port=8000,
+            reload=False
+        )
     else:
         # Polling mode (for local testing)
         YouTubeBot().run()
