@@ -283,8 +283,7 @@ if __name__ == "__main__":
             logger.error("Webhook setup command failed.")
         sys.exit(0)
         
-        bot = YourBotClass()
-        bot.run()
+        
   
     logger.info("This script is intended to be run via a web server like Uvicorn.")
     logger.info("Example: uvicorn bot:webserver --host 0.0.0.0 --port $PORT")
