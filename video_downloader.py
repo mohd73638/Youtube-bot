@@ -24,22 +24,27 @@ class VideoDownloader:
     def _download_with_yt_dlp(url: str) -> Tuple[Optional[str], Optional[str]]:
         try:
             ydl_opts = {
-                "format": f"best[filesize<{Config.MAX_FILE_SIZE}]",
-                "outtmpl": str(Config.TEMP_DIR / "%(id)s.%(ext)s"),
-                "quiet": True,
-                "cookiefile": "cookies.txt" if os.path.exists("cookies.txt") else None,
-                "noplaylist": True,
+                'format': 'bestvideo[height<=720]+bestaudio/best[height<=720]',
+                'outtmpl': str(Config.TEMP_DIR / '%(id)s.%(ext)s'),
+                'cookiefile': Config.COOKIE_FILE,
+                'ignoreerrors': True,
+                'quiet': True,
+                'force_ipv4': True,
             }
         
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
-                filename = ydl.prepare_filename(info)
-                return filename, info.get('title', 'video')
+                if not info:
+                    return None, "Failed to extract video info"
             
-        except yt_dlp.utils.DownloadError as e:
-            return None, f"yt-dlp: {str(e)}"
+                filename = ydl.prepare_filename(info)
+                if Path(filename).exists():
+                    return filename, info.get('title', 'video')
+            
+            return None, "File not found after download"
         except Exception as e:
-            return None, f"Unexpected error: {str(e)}"
+            return None, f"yt-dlp error: {str(e)}"
+        
     @staticmethod
     def _download_with_pytube(url: str) -> Tuple[Optional[str], Optional[str]]:
         """Attempt YouTube download using pytube as a fallback."""
