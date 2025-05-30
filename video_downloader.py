@@ -109,36 +109,16 @@ class VideoDownloader:
         except Exception as e:
             return None, f"Facebook error: {str(e)}"
     
+   
     @staticmethod
-    def download_video(url: str, max_retries: int = 2) -> Tuple[Optional[str], Optional[str]]:
-        """Download with retries, fallback, and proper cleanup."""
-        last_error = None
-    
-        for attempt in range(max_retries):
-            # Try yt-dlp first
-            file_path, error = VideoDownloader._download_with_yt_dlp(url)
-        
-            if file_path:
-                return file_path, error  # Success!
-        
-            # Fallback to pytube for YouTube
-            if VideoDownloader._is_youtube_url(url):
-                logger.warning(f"Attempt {attempt + 1}: yt-dlp failed, trying pytube...")
-                pt_path, pt_error = VideoDownloader._download_with_pytube(url)
-            
-                if pt_path:
-                    return pt_path, pt_error  # Pytube success
-            
-                # Combine errors if both failed
-                last_error = VideoDownloader._format_errors(error, pt_error)
-                VideoDownloader._cleanup_file(pt_path)  # Cleanup partial pytube downloads
-            else:
-                last_error = error
-        
-            logger.warning(f"Attempt {attempt + 1} failed: {last_error}")
-            time.sleep(2 ** attempt)  # Exponential backoff
-    
-        return None, last_error  # All retries failed
+    def download_video(url: str) -> Tuple[Optional[str], Optional[str]]:
+        # تحديد نوع الرابط
+        if "youtube.com" in url or "youtu.be" in url:
+            return VideoDownloader._download_with_yt_dlp(url)
+        elif "facebook.com" in url:
+            return VideoDownloader._download_facebook(url)
+        else:
+            return None, "Unsupported website"
 
     @staticmethod
     def _is_youtube_url(url: str) -> bool:
