@@ -61,42 +61,50 @@ class VideoDownloader:
                 except Exception as e:
                     logger.error(f"Failed to clean {f.name}: {e}")
 
+
     @staticmethod
     def _download_with_yt_dlp(url: str) -> Tuple[Optional[str], Optional[str]]:
-        """Download using yt-dlp with enhanced options."""
+        """Download using yt-dlp with enhanced options for YouTube and other supported sites."""
         try:
             ydl_opts = {
-                'format': 'bestvideo[height<=720]+bestaudio/best[height<=720]',
+                'format': 'bestvideo[height<=720]+bestaudio/best[height<=720]/best[height<=720]',
                 'outtmpl': str(Config.TEMP_DIR / '%(id)s.%(ext)s'),
                 'cookiefile': Config.YOUTUBE_COOKIES,
                 'ignoreerrors': True,
-                'quiet': True,
+                'quiet': False,
+                'no_warnings': False,
+                'verbose': True,
                 'force_ipv4': True,
                 'retries': 3,
                 'socket_timeout': 30,
-                'extract_flat': False
+                'extract_flat': False,
+                'extractor_args': {
+                    'youtube': ['player_client=web']  # Fix for 400 error on YouTube
+                },
+                'http_headers': {
+                'User-Agent': VideoDownloader._random_user_agent()
+                }
             }
-            
+
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 if not info:
                     return None, "Failed to extract video info"
-                
+
                 filename = ydl.prepare_filename(info)
                 if not Path(filename).exists():
-                    # Fallback filename detection
                     for f in Config.TEMP_DIR.glob(f"*{info.get('id', '')}*"):
                         filename = str(f)
                         break
-                
+
                 if Path(filename).exists():
                     return filename, info.get('title', 'video')[:200]
-                
+
             return None, "Downloaded file not found"
-            
+
         except Exception as e:
             return None, f"yt-dlp error: {str(e)}"
-
+    
     @staticmethod
     def _download_with_pytube(url: str) -> Tuple[Optional[str], Optional[str]]:
         """Fallback YouTube downloader using pytube."""
